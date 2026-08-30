@@ -28,7 +28,13 @@ export function windowsCommandQuote(value: string): string {
     if (/[%!\r\n]/.test(value)) {
         throw new Error('Windows hook command paths and arguments cannot contain %, !, CR, or LF');
     }
-    if (value.length > 0 && !/[\s"&|<>^()]/.test(value)) return value;
+    // Backslashes are unsafe whenever the hook command will be parsed by a
+    // POSIX-style shell (Claude Code on Windows invokes hooks via Git Bash):
+    // an unquoted `C:\path\to\hapi.exe` lands at bash as the token
+    // `C:Userseverdom...hapi.exe` because bash strips lone backslashes before
+    // command lookup. Always wrap values that contain `\` so both cmd /c and
+    // `bash -c` round-trip them intact.
+    if (value.length > 0 && !/[\s"&|<>^()\\]/.test(value)) return value;
     let result = '"';
     let backslashes = 0;
     for (const char of value) {
