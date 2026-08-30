@@ -72,17 +72,31 @@ export function createClaudeProfile(input: { name: string; settingsPath: string;
     }
 }
 
+/**
+ * Normalize a settings path so cross-platform comparisons ignore trailing
+ * separators, slash direction, and case (Windows file paths are case-
+ * insensitive and hapi forwards whatever the operator typed, e.g. `C:\Users\…`
+ * vs `c:/users/…`). We deliberately do NOT touch the string's substance
+ * (no `path.resolve`) because we want to mirror whatever the session actually
+ * uses, not the cwd-relative interpretation.
+ */
+export function normalizeSettingsPath(value: string): string {
+    return value.trim().replace(/[\\/]+/g, '/').replace(/\/+$/, '').toLowerCase()
+}
+
 export function findMatchingClaudeProfile(
     profiles: ClaudeProfile[],
     input: { settingsPath: string; args: string[] }
 ): ClaudeProfile | null {
-    const settingsPath = input.settingsPath.trim()
-    const args = input.args.map((arg) => arg.trim()).filter(Boolean)
-    return profiles.find((profile) => (
-        profile.settingsPath === settingsPath
-        && profile.args.length === args.length
-        && profile.args.every((arg, index) => arg === args[index])
-    )) ?? null
+    const settingsPath = normalizeSettingsPath(input.settingsPath)
+    if (!settingsPath) return null
+    // Match on settings path alone. CLI-spawned sessions carry whatever args
+    // the operator passed (`--hapi-claude-arg`), which may differ from what the
+    // web profile saved (e.g. profile has empty args but CLI added a `--model`),
+    // so requiring exact arg equality would defeat the whole purpose of the
+    // lookup for the common "started from terminal, but I do have a profile
+    // saved with the same settings file" case.
+    return profiles.find((profile) => normalizeSettingsPath(profile.settingsPath) === settingsPath) ?? null
 }
 
 export function profileToClaudeConfig(profile: ClaudeProfile | null | undefined): ClaudeConfig | null {

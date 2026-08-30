@@ -28,6 +28,7 @@ import { formatSessionHeaderTimestamp } from '@/lib/sessionHeaderTimestamp'
 import { selectMobileSessionHeaderSecondary } from '@/lib/sessionHeaderMobileMetadata'
 import { useMinuteTick } from '@/hooks/useMinuteTick'
 import { markSessionUnread } from '@/lib/sessionLastSeen'
+import { findMatchingClaudeProfile, loadClaudeProfiles } from '@/lib/claude-profiles'
 
 /** Same preference order as session-list chips: display label → host → short id. */
 export function resolveSessionHeaderMachineLabel(
@@ -168,6 +169,35 @@ export function SessionHeader(props: {
     }) > 0
     const agentFlavor = session.metadata?.flavor ?? null
     const agentLabel = agentFlavor?.trim() || null
+    // Claude spawn profile (settings file + extra args) carried through spawn → metadata.
+    // Render a compact "profile · settings.json" label below the title so the operator
+    // can tell at a glance which model stack the session is running on.
+    const claudeConfig = agentFlavor === 'claude' ? session.metadata?.claudeConfig ?? null : null
+    const claudeProfileSummary = useMemo(() => {
+        if (!claudeConfig) return null
+        const name = claudeConfig.profileName?.trim() || claudeConfig.profileId?.trim() || null
+        const settingsPath = claudeConfig.settingsPath?.trim() || null
+        const settingsFile = settingsPath
+            ? settingsPath.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || settingsPath
+            : null
+        const args = Array.isArray(claudeConfig.args) ? claudeConfig.args.filter((a) => typeof a === 'string' && a.trim().length > 0) : []
+        const argsCount = args.length
+        // Prefer a known web-side launch profile (matched by settingsPath + args)
+        // so sessions spawned from the CLI (where metadata.claudeConfig.profileName
+        // is empty) still surface the human-friendly name the operator saved in
+        // the New Session page. Falls back to in-metadata name / settings file.
+        const matchingProfile = settingsPath
+            ? findMatchingClaudeProfile(loadClaudeProfiles(), { settingsPath, args })
+            : null
+        const resolvedName = matchingProfile?.name?.trim() || name || null
+        const display = resolvedName || settingsFile || 'profile'
+        const tooltipParts: string[] = []
+        if (matchingProfile && matchingProfile.name !== display) tooltipParts.push(`${t('session.item.claudeProfile')}: ${matchingProfile.name}`)
+        else if (name && name !== display) tooltipParts.push(`${t('session.item.claudeProfile')}: ${name}`)
+        if (settingsPath && settingsPath !== display) tooltipParts.push(settingsPath)
+        if (argsCount > 0) tooltipParts.push(args.map((a) => `--hapi-claude-arg ${a}`).join('\n'))
+        return { display, tooltip: tooltipParts.join('\n'), hasProfile: Boolean(resolvedName || settingsPath) }
+    }, [claudeConfig, t])
     const reasoningEffort = getReasoningEffortForFlavor(
         agentFlavor,
         session.modelReasoningEffort,
@@ -210,6 +240,7 @@ export function SessionHeader(props: {
         createdAt: createdAtLabel !== null,
         worktree: headerMetadata.worktree && Boolean(worktreeBranch),
         fastMode: headerMetadata.fastMode && showFastBadge,
+        claudeProfile: headerMetadata.claudeProfile && claudeProfileSummary !== null,
     })
     const showMobileMetadata = (headerMetadata.agent && agentLabel !== null) || mobileSecondary !== null
 
@@ -413,6 +444,7 @@ export function SessionHeader(props: {
                                 {mobileSecondary === 'createdAt' && createdAtLabel ? <span className="truncate">{headerMetadata.showLabels ? `${t('session.header.createdAt')}: ` : ''}{createdAtLabel}</span> : null}
                                 {mobileSecondary === 'worktree' && worktreeBranch ? <span className="truncate">{headerMetadata.showLabels ? `${t('session.item.worktree')}: ` : ''}{worktreeBranch}</span> : null}
                                 {mobileSecondary === 'fastMode' ? <span className="truncate text-[#34C759]">fast</span> : null}
+                                {mobileSecondary === 'claudeProfile' && claudeProfileSummary ? <span className="truncate" data-testid="session-header-claude-profile" title={claudeProfileSummary.tooltip}>{claudeProfileSummary.display}</span> : null}
                             </div>
                         ) : null}
                         <div className="hidden flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[var(--app-hint)] sm:flex">
@@ -420,6 +452,11 @@ export function SessionHeader(props: {
                                 <span className="inline-flex items-center gap-1">
                                     <AgentFlavorIcon flavor={session.metadata?.flavor} className="h-3.5 w-3.5 shrink-0 -translate-y-px" />
                                     {agentLabel}
+                                </span>
+                            ) : null}
+                            {headerMetadata.claudeProfile && claudeProfileSummary ? (
+                                <span data-testid="session-header-claude-profile" className="max-w-[14rem] truncate" title={claudeProfileSummary.tooltip}>
+                                    {claudeProfileSummary.display}
                                 </span>
                             ) : null}
                             {headerMetadata.machine && machineLabel ? (

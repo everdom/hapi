@@ -174,6 +174,7 @@ export default {
   'session.modelChange.pending': 'Changing…',
   'session.modelChange.pendingTooltip': 'The model will change when the current task finishes.',
   'session.item.worktree': 'worktree',
+  'session.item.claudeProfile': 'Claude profile',
   'session.item.pending': 'pending',
   'session.item.thinking': 'thinking',
   'session.item.running': 'Running',
@@ -767,6 +768,8 @@ export default {
 
   // Settings page
   'common.back': 'Back',
+  'common.cancel': 'Cancel',
+  'common.save': 'Save',
   'settings.title': 'Settings',
   'settings.hub.description': 'Choose a category to adjust HAPI to your workflow.',
   'settings.hub.voice.summary': 'Voice, language, and behavior',
@@ -874,6 +877,7 @@ export default {
   'settings.display.sessionHeader.description': 'Choose which details appear below the session title. Mobile shows the agent plus the highest-priority available detail.',
   'settings.display.sessionHeader.showLabels': 'Show field labels',
   'settings.display.sessionHeader.agent': 'Agent',
+  'settings.display.sessionHeader.claudeProfile': 'Claude profile',
   'settings.display.sessionHeader.model': 'Model',
   'settings.display.sessionHeader.reasoning': 'Reasoning effort',
   'settings.display.sessionHeader.fastMode': 'Fast mode',

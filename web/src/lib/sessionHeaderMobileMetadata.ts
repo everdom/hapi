@@ -7,8 +7,10 @@ export type SessionHeaderSecondaryMetadataKey =
     | 'createdAt'
     | 'worktree'
     | 'fastMode'
+    | 'claudeProfile'
 
 const MOBILE_SECONDARY_PRIORITY: ReadonlyArray<SessionHeaderSecondaryMetadataKey> = [
+    'claudeProfile',
     'machine',
     'lastActive',
     'model',

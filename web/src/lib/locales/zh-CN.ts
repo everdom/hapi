@@ -174,6 +174,7 @@ export default {
   'session.modelChange.pending': '更改中…',
   'session.modelChange.pendingTooltip': '当前任务完成后将更改模型。',
   'session.item.worktree': '工作树',
+  'session.item.claudeProfile': 'Claude 配置',
   'session.item.pending': '待处理',
   'session.item.thinking': '思考中',
   'session.item.running': '运行中',
@@ -766,6 +767,8 @@ export default {
 
   // Settings page
   'common.back': '返回',
+  'common.cancel': '取消',
+  'common.save': '保存',
   'settings.title': '设置',
   'settings.hub.description': '选择一个分类，按你的工作方式调整 HAPI。',
   'settings.hub.voice.summary': '声音、语言和行为',
@@ -873,6 +876,7 @@ export default {
   'settings.display.sessionHeader.description': '选择在会话标题下方显示的信息。移动端显示 Agent 类型及优先级最高的一个可用信息。',
   'settings.display.sessionHeader.showLabels': '显示字段标题',
   'settings.display.sessionHeader.agent': 'Agent 类型',
+  'settings.display.sessionHeader.claudeProfile': 'Claude 配置',
   'settings.display.sessionHeader.model': '模型',
   'settings.display.sessionHeader.reasoning': '推理强度',
   'settings.display.sessionHeader.fastMode': '快速模式',
