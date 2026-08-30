@@ -208,39 +208,54 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
     });
     logger.debug(`[START] Hook server started on port ${hookServer.port}`);
 
-    const hookSettingsPath = generateHookSettingsFile(hookServer.port, hookServer.token, {
-        filenamePrefix: 'session-hook',
-        logLabel: 'generateHookSettings'
-    });
-    // If the user supplied --settings, merge it with hapi's auto-generated
-    // hooks so the resulting file preserves user customisations while still
-    // shipping our hook forwarder. We also lift the user's `env` block out of
-    // the file and push it into `claudeEnvVars` — Claude Code reads
-    // `~/.claude/settings.json` first and that file's env can shadow the one
-    // we passed through `--settings`, so we have to seed the spawn env too.
-    const mergedSettings = options.claudeSettingsPath
-        ? mergeClaudeSettingsFile(options.claudeSettingsPath, hookSettingsPath, {
-            filenamePrefix: 'session-settings',
-            logLabel: 'mergeClaudeSettings'
-        })
-        : null;
-    const effectiveSettingsPath = mergedSettings?.path ?? hookSettingsPath;
-    const userSettingsEnv = mergedSettings?.envVars ?? {};
-    const claudeEnvVarsForSpawn = Object.keys(userSettingsEnv).length > 0
-        ? { ...(options.claudeEnvVars ?? {}), ...userSettingsEnv }
-        : options.claudeEnvVars;
-    // The interactive TUI gets a separate settings file that also forwards
+    // The interactive TUI needs a settings file that also forwards
     // UserPromptSubmit/PreToolUse (their payloads carry permission_mode), so a
-    // mode picked via shift+tab is inherited on local→remote switch. The
-    // remote SDK process keeps the SessionStart-only file: these extra hooks
-    // block Claude per prompt/tool call, and remote mode state is owned by the
-    // hub/RPC path.
-    const localHookSettingsPath = generateHookSettingsFile(hookServer.port, hookServer.token, {
+    // mode picked via shift+tab is inherited on local→remote switch. The remote
+    // SDK process keeps a SessionStart-only file: those extra hooks block
+    // Claude per prompt/tool call, and remote mode state is owned by the
+    // hub/RPC path anyway.
+    const hapiLocalHookSettingsPath = generateHookSettingsFile(hookServer.port, hookServer.token, {
         filenamePrefix: 'session-hook-local',
         logLabel: 'generateHookSettings',
         trackPermissionMode: true
     });
-    logger.debug(`[START] Generated hook settings files: ${hookSettingsPath}, ${localHookSettingsPath}`);
+    const hapiSdkHookSettingsPath = generateHookSettingsFile(hookServer.port, hookServer.token, {
+        filenamePrefix: 'session-hook',
+        logLabel: 'generateHookSettings'
+    });
+    // If the user supplied --settings, merge it with hapi's auto-generated
+    // hooks so the resulting file preserves user customisations (env block,
+    // model overrides, custom hooks, etc.) while still shipping our hook
+    // forwarder. We have to do this for BOTH the local/PTY and remote/SDK
+    // flavours — claudeLocalLauncher reads `localHookSettingsPath`, so without
+    // a merged file there, minimax-style customisations never reach the Claude
+    // process and global ~/.claude/settings.json env wins.
+    //
+    // We also lift the user's `env` block out of the file and push it into
+    // `claudeEnvVars` — Claude Code reads `~/.claude/settings.json` first and
+    // that file's env can shadow the one we passed through `--settings`, so we
+    // have to seed the spawn env too.
+    const mergedLocalSettings = options.claudeSettingsPath
+        ? mergeClaudeSettingsFile(options.claudeSettingsPath, hapiLocalHookSettingsPath, {
+            filenamePrefix: 'session-settings-local',
+            logLabel: 'mergeClaudeSettings'
+        })
+        : null;
+    const mergedSdkSettings = options.claudeSettingsPath
+        ? mergeClaudeSettingsFile(options.claudeSettingsPath, hapiSdkHookSettingsPath, {
+            filenamePrefix: 'session-settings-sdk',
+            logLabel: 'mergeClaudeSettings'
+        })
+        : null;
+    const localHookSettingsPath = mergedLocalSettings?.path ?? hapiLocalHookSettingsPath;
+    const hookSettingsPath = mergedSdkSettings?.path ?? hapiSdkHookSettingsPath;
+    // Both flavours lift the same user env; either merged result is fine to
+    // source the env map from — user settings.json env is identical.
+    const userSettingsEnv = mergedLocalSettings?.envVars ?? mergedSdkSettings?.envVars ?? {};
+    const claudeEnvVarsForSpawn = Object.keys(userSettingsEnv).length > 0
+        ? { ...(options.claudeEnvVars ?? {}), ...userSettingsEnv }
+        : options.claudeEnvVars;
+    logger.debug(`[START] Generated hook settings files: local=${localHookSettingsPath}, sdk=${hookSettingsPath}`);
 
     // Print log file path
     const logPath = logger.logFilePath;
@@ -254,11 +269,14 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
         onAfterClose: () => {
             happyServer.stop();
             hookServer.stop();
-            if (effectiveSettingsPath !== hookSettingsPath) {
-                cleanupHookSettingsFile(effectiveSettingsPath, 'mergeClaudeSettings');
+            if (localHookSettingsPath !== hapiLocalHookSettingsPath) {
+                cleanupHookSettingsFile(localHookSettingsPath, 'mergeClaudeSettings');
             }
-            cleanupHookSettingsFile(hookSettingsPath, 'generateHookSettings');
-            cleanupHookSettingsFile(localHookSettingsPath, 'generateHookSettings');
+            if (hookSettingsPath !== hapiSdkHookSettingsPath) {
+                cleanupHookSettingsFile(hookSettingsPath, 'mergeClaudeSettings');
+            }
+            cleanupHookSettingsFile(hapiLocalHookSettingsPath, 'generateHookSettings');
+            cleanupHookSettingsFile(hapiSdkHookSettingsPath, 'generateHookSettings');
         }
     });
 
@@ -619,7 +637,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
             claudeArgs: options.claudeArgs,
             startedBy,
             resumeSessionId: options.resumeSessionId,
-            hookSettingsPath: effectiveSettingsPath,
+            hookSettingsPath: hookSettingsPath,
             localHookSettingsPath
         });
     } catch (error) {

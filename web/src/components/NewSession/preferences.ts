@@ -15,6 +15,7 @@ import { usesCodexFamilyPermissionModes } from '@/lib/codexFamilyPermissionAgent
 
 const AGENT_STORAGE_KEY = 'hapi:newSession:agent'
 const YOLO_STORAGE_KEY = 'hapi:newSession:yolo'
+const CLAUDE_PROFILE_STORAGE_KEY = 'hapi:newSession:claudeProfile'
 const LAUNCH_SETTINGS_STORAGE_PREFIX = 'hapi:newSession:launchSettings:v1'
 
 export type PreferredLaunchSettings = {
@@ -60,6 +61,22 @@ export function loadPreferredYoloMode(): boolean {
 export function savePreferredYoloMode(enabled: boolean): void {
     try {
         localStorage.setItem(YOLO_STORAGE_KEY, enabled ? 'true' : 'false')
+    } catch {
+        // Ignore storage errors
+    }
+}
+
+export function loadPreferredClaudeProfileId(): string {
+    try {
+        return localStorage.getItem(CLAUDE_PROFILE_STORAGE_KEY) ?? 'default'
+    } catch {
+        return 'default'
+    }
+}
+
+export function savePreferredClaudeProfileId(profileId: string): void {
+    try {
+        localStorage.setItem(CLAUDE_PROFILE_STORAGE_KEY, profileId)
     } catch {
         // Ignore storage errors
     }

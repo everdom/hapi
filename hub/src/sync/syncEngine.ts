@@ -1944,7 +1944,9 @@ export class SyncEngine {
         existingSessionId?: string,
         collaborationMode?: CodexCollaborationMode,
         copilotAgentMode?: CopilotAgentMode,
-        startingMode?: 'remote' | 'pty'
+        startingMode?: 'remote' | 'pty',
+        forkSession?: boolean,
+        claudeConfig?: import('@hapi/protocol').ClaudeConfig
     ): ReturnType<RpcGateway['spawnSession']> {
         return await this.rpcGateway.spawnSession(
             machineId,
@@ -1962,7 +1964,9 @@ export class SyncEngine {
             existingSessionId,
             collaborationMode,
             copilotAgentMode,
-            startingMode
+            startingMode,
+            forkSession,
+            claudeConfig
         )
     }
 

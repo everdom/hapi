@@ -59,13 +59,25 @@ import { groupModelsByProvider } from '@/components/AssistantChat/piModelGroups'
 import { isThinkingLevelSupported } from '@/components/AssistantChat/piThinkingLevelOptions'
 import {
     loadPreferredAgent,
+    loadPreferredClaudeProfileId,
     loadPreferredLaunchSettings,
     loadPreferredYoloMode,
     resolvePreferredLaunchSettings,
     savePreferredAgent,
+    savePreferredClaudeProfileId,
     savePreferredLaunchSettings,
     savePreferredYoloMode,
 } from './preferences'
+import { ClaudeProfileSelector } from './ClaudeProfileSelector'
+import {
+    CLAUDE_CUSTOM_PROFILE_ID,
+    createClaudeProfile,
+    findMatchingClaudeProfile,
+    type ClaudeProfile,
+    loadClaudeProfiles,
+    profileToClaudeConfig,
+    saveClaudeProfiles
+} from '@/lib/claude-profiles'
 import { SessionTypeSelector } from './SessionTypeSelector'
 import { PermissionField } from './PermissionField'
 import { usesCodexFamilyPermissionModes } from '@/lib/codexFamilyPermissionAgents'
@@ -114,6 +126,8 @@ export function NewSession(props: {
     const [collaborationMode, setCollaborationMode] = useState<CodexCollaborationMode>('default')
     const [copilotAgentMode, setCopilotAgentMode] = useState<CopilotAgentMode>('interactive')
     const [yoloMode, setYoloMode] = useState(loadPreferredYoloMode)
+    const [claudeProfileId, setClaudeProfileId] = useState(loadPreferredClaudeProfileId)
+    const [claudeProfile, setClaudeProfile] = useState<ClaudeProfile | null>(null)
     const [codexFamilyPermissionMode, setCodexFamilyPermissionMode] = useState<PermissionMode>('default')
     const [grokPermissionMode, setGrokPermissionMode] = useState<GrokPermissionMode>('default')
     const [sessionType, setSessionType] = useState<SessionType>('simple')
@@ -196,6 +210,10 @@ export function NewSession(props: {
     useEffect(() => {
         savePreferredYoloMode(yoloMode)
     }, [yoloMode])
+
+    useEffect(() => {
+        savePreferredClaudeProfileId(claudeProfileId)
+    }, [claudeProfileId])
 
     useEffect(() => {
         if (props.initialDirectory !== undefined) {
@@ -1550,6 +1568,28 @@ export function NewSession(props: {
                 return
             }
 
+            // Persist a one-off Claude custom profile into the user's saved profile list
+            // so it shows up in the selector on subsequent runs.
+            const persistCustomClaudeProfile = (profile: ClaudeProfile): ClaudeProfile => {
+                const profiles = loadClaudeProfiles()
+                const existingProfile = findMatchingClaudeProfile(profiles, profile)
+                if (existingProfile) return existingProfile
+
+                const savedProfile = createClaudeProfile({
+                    name: profile.name,
+                    settingsPath: profile.settingsPath,
+                    args: profile.args
+                })
+                saveClaudeProfiles([...profiles, savedProfile])
+                return savedProfile
+            }
+            let resolvedClaudeProfile = agent === 'claude' && claudeProfile?.id === CLAUDE_CUSTOM_PROFILE_ID
+                ? persistCustomClaudeProfile(claudeProfile)
+                : claudeProfile
+            if (resolvedClaudeProfile && resolvedClaudeProfile.id !== claudeProfileId) {
+                setClaudeProfileId(resolvedClaudeProfile.id)
+            }
+
             const result = await spawnSession({
                 machineId,
                 directory: trimmedDirectory,
@@ -1568,6 +1608,7 @@ export function NewSession(props: {
                 serviceTier: resolvedServiceTier,
                 collaborationMode: resolvedCollaborationMode,
                 copilotAgentMode: agent === 'copilot' ? copilotAgentMode : undefined,
+                claudeConfig: agent === 'claude' ? profileToClaudeConfig(resolvedClaudeProfile) : null,
             })
 
 
@@ -1847,6 +1888,13 @@ export function NewSession(props: {
                     piSelectedModel={agent === 'pi' ? piSelectedModel : null}
                 />
             ) : null}
+            <ClaudeProfileSelector
+                agent={agent}
+                selectedProfileId={claudeProfileId}
+                isDisabled={isFormDisabled}
+                onSelectedProfileIdChange={setClaudeProfileId}
+                onSelectedProfileChange={setClaudeProfile}
+            />
             <PermissionField
                 agent={agent}
                 nativeValue={agent === 'grok' ? grokPermissionMode : codexFamilyPermissionMode}

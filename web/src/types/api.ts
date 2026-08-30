@@ -56,6 +56,7 @@ export type {
 export type {
     AgentState,
     AttachmentMetadata,
+    ClaudeConfig,
     CodexCollaborationMode,
     CopilotAgentMode,
     Metadata,

@@ -1597,5 +1597,25 @@ export function buildCliArgs(
       }
     }
   }
+  if (agentCommand === 'claude' && options.claudeConfig) {
+    // Translate the web-UI Claude profile into hapi's CLI flags so the child
+    // hapi process merges the profile's settings/env with its own hooks. Args
+    // are forwarded verbatim (one --hapi-claude-arg per token) so quoting is
+    // preserved through the runner → child boundary.
+    if (options.claudeConfig.profileId) {
+      args.push('--hapi-claude-config-id', options.claudeConfig.profileId);
+    }
+    if (options.claudeConfig.profileName) {
+      args.push('--hapi-claude-config-name', options.claudeConfig.profileName);
+    }
+    if (options.claudeConfig.settingsPath) {
+      args.push('--settings', options.claudeConfig.settingsPath);
+    }
+    for (const claudeArg of options.claudeConfig.args ?? []) {
+      if (claudeArg) {
+        args.push('--hapi-claude-arg', claudeArg);
+      }
+    }
+  }
   return args;
 }

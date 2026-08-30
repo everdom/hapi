@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
     AttachmentMetadataSchema,
+    ClaudeConfigSchema,
     CodexCollaborationModeSchema,
     CopilotAgentModeSchema,
     DecryptedMessageSchema,
@@ -620,7 +621,8 @@ export const SpawnSessionRequestSchema = z.object({
     serviceTier: z.enum(['fast', 'standard']).optional(),
     collaborationMode: CodexCollaborationModeSchema.optional(),
     copilotAgentMode: CopilotAgentModeSchema.optional(),
-    startingMode: z.enum(['remote', 'pty']).optional()
+    startingMode: z.enum(['remote', 'pty']).optional(),
+    claudeConfig: ClaudeConfigSchema.optional()
 })
 
 export type SpawnSessionRequest = z.infer<typeof SpawnSessionRequestSchema>

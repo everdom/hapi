@@ -1,5 +1,6 @@
 import type { AgentFlavor } from '@hapi/protocol'
 import type { CopilotAgentMode } from '@hapi/protocol'
+import type { ClaudeConfig } from '@hapi/protocol'
 
 export interface SpawnSessionOptions {
     machineId?: string
@@ -27,6 +28,12 @@ export interface SpawnSessionOptions {
     startingMode?: 'remote' | 'pty'
     /** Claude: spawn with --fork-session after --resume. */
     forkSession?: boolean
+    /**
+     * Claude launch profile (settings file + extra args) sourced from the web UI's
+     * ClaudeProfileSelector. Translated into hapi's --settings / --hapi-claude-arg
+     * CLI flags by buildCliArgs; null/undefined keeps the default (no profile).
+     */
+    claudeConfig?: ClaudeConfig | null
     /** Runner-internal post-create containment revalidation. Never serialized. */
     validateDirectory?: (path: string) => Promise<boolean>
 }
