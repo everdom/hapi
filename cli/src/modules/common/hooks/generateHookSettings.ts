@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { writeFileSync, mkdirSync, unlinkSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
 import { configuration } from '@/configuration';
 import { logger } from '@/ui/logger';
 import { getHappyCliCommand } from '@/utils/spawnHappyCLI';
@@ -144,5 +144,83 @@ export function cleanupHookSettingsFile(filepath: string, logLabel: string): voi
         }
     } catch (error) {
         logger.debug(`[${logLabel}] Failed to cleanup hook settings file: ${error}`);
+    }
+}
+
+/**
+ * Merge a user-provided Claude settings file with hapi's auto-generated hook
+ * settings. The user's settings are loaded first; then hapi's hooks (and any
+ * hapi-only keys like `hooksConfig.enabled`) are overlaid on top. The result
+ * is written to a fresh temp file under `<happyHomeDir>/tmp/hooks/` so the
+ * user's source file is left untouched.
+ *
+ * Returns the merged file path. If the user file cannot be read, returns the
+ * hook settings path unchanged (so we still ship working hooks, just without
+ * user-supplied customisations).
+ */
+export function mergeClaudeSettingsFile(
+    userSettingsPath: string,
+    hookSettingsPath: string,
+    options: { filenamePrefix: string; logLabel: string }
+): string {
+    const hooksDir = join(configuration.happyHomeDir, 'tmp', 'hooks');
+    mkdirSync(hooksDir, { recursive: true });
+
+    const filename = `${options.filenamePrefix}-${process.pid}.json`;
+    const mergedPath = join(hooksDir, filename);
+
+    let userSettings: Record<string, unknown> = {};
+    try {
+        const raw = readFileSync(userSettingsPath, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            userSettings = parsed as Record<string, unknown>;
+        } else {
+            logger.debug(`[${options.logLabel}] User settings at ${userSettingsPath} is not an object; ignoring.`);
+        }
+    } catch (error) {
+        logger.debug(`[${options.logLabel}] Could not read user settings at ${userSettingsPath}: ${error}`);
+        return hookSettingsPath;
+    }
+
+    let hookSettings: Record<string, unknown> = {};
+    try {
+        const raw = readFileSync(hookSettingsPath, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            hookSettings = parsed as Record<string, unknown>;
+        }
+    } catch (error) {
+        logger.debug(`[${options.logLabel}] Could not read hook settings at ${hookSettingsPath}: ${error}`);
+    }
+
+    const merged: Record<string, unknown> = { ...userSettings, ...hookSettings };
+
+    // Deep-merge the `hooks` key so user-defined and hapi-defined hook events
+    // both survive.
+    const userHooks = userSettings.hooks as Record<string, unknown> | undefined;
+    const hookHooks = hookSettings.hooks as Record<string, unknown> | undefined;
+    if (userHooks || hookHooks) {
+        const mergedHooks: Record<string, unknown> = { ...(userHooks ?? {}) };
+        if (hookHooks) {
+            for (const [event, value] of Object.entries(hookHooks)) {
+                const existing = mergedHooks[event];
+                if (Array.isArray(existing) && Array.isArray(value)) {
+                    mergedHooks[event] = [...(value as unknown[]), ...(existing as unknown[])];
+                } else {
+                    mergedHooks[event] = value;
+                }
+            }
+        }
+        merged.hooks = mergedHooks;
+    }
+
+    try {
+        writeFileSync(mergedPath, JSON.stringify(merged, null, 4));
+        logger.debug(`[${options.logLabel}] Merged user settings into: ${mergedPath}`);
+        return mergedPath;
+    } catch (error) {
+        logger.debug(`[${options.logLabel}] Failed to write merged settings: ${error}`);
+        return hookSettingsPath;
     }
 }

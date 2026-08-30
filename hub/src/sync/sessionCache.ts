@@ -1362,6 +1362,11 @@ export class SessionCache {
             changed = true
         }
 
+        if (oldObj.claudeConfig && typeof oldObj.claudeConfig === 'object' && !newObj.claudeConfig) {
+            merged.claudeConfig = oldObj.claudeConfig
+            changed = true
+        }
+
         if (typeof oldObj.path === 'string' && typeof newObj.path !== 'string') {
             merged.path = oldObj.path
             changed = true

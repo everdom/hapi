@@ -3,6 +3,7 @@ export type {
     AgentStateCompletedRequest,
     AgentStateRequest,
     AttachmentMetadata,
+    ClaudeConfig,
     DecryptedMessage,
     Metadata,
     Machine,

@@ -50,6 +50,20 @@ export interface Settings {
      * Env vars still win when set at process start (ops override).
      */
     providerCredentials?: Partial<Record<string, string>>
+    /**
+     * Named Claude launch profiles persisted from the web UI. Keyed by machineId,
+     * each profile captures a settings path + CLI args the user wants to launch
+     * Claude with. Read by `hub/src/web/routes/claudeProfiles.ts` and surfaced
+     * via the `ClaudeProfileSelector` web component.
+     */
+    claudeProfiles?: Record<string, Array<{
+        id: string
+        name: string
+        settingsPath: string
+        args: string[]
+        createdAt: number
+        updatedAt: number
+    }>>
 }
 
 export function getSettingsFile(dataDir: string): string {

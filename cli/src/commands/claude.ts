@@ -15,6 +15,20 @@ import { withBunRuntimeEnv } from '@/utils/bunRuntime'
 import { extractErrorInfo } from '@/utils/errorUtils'
 import type { CommandDefinition } from './types'
 
+function stripEnclosingQuotes(value: string): string {
+    let result = value.trim()
+    while (result.length >= 2) {
+        const first = result[0]
+        const last = result[result.length - 1]
+        if ((first === '"' && last === '"') || (first === '\'' && last === '\'')) {
+            result = result.slice(1, -1).trim()
+            continue
+        }
+        break
+    }
+    return result
+}
+
 export const claudeCommand: CommandDefinition = {
     name: 'default',
     requiresRuntimeAssets: true,
@@ -28,6 +42,7 @@ export const claudeCommand: CommandDefinition = {
         const options: StartOptions = {}
         let showHelp = false
         const unknownArgs: string[] = []
+        const hapiClaudeArgs: string[] = []
         let hasExplicitPermissionMode = false
 
         for (let i = 0; i < args.length; i++) {
@@ -70,6 +85,22 @@ export const claudeCommand: CommandDefinition = {
                 }
                 options.effort = effort
                 unknownArgs.push('--effort', effort)
+            } else if (arg === '--settings' || arg === '--hapi-claude-settings') {
+                const settingsPath = args[++i]
+                if (!settingsPath) {
+                    throw new Error(`Missing ${arg} value`)
+                }
+                options.claudeSettingsPath = stripEnclosingQuotes(settingsPath)
+            } else if (arg === '--hapi-claude-arg') {
+                const claudeArg = args[++i]
+                if (!claudeArg) {
+                    throw new Error('Missing --hapi-claude-arg value')
+                }
+                hapiClaudeArgs.push(claudeArg)
+            } else if (arg === '--hapi-claude-config-id') {
+                options.claudeConfigId = args[++i]
+            } else if (arg === '--hapi-claude-config-name') {
+                options.claudeConfigName = args[++i]
             } else if (arg === '--started-by') {
                 options.startedBy = args[++i] as 'runner' | 'terminal'
             } else if (arg === '--existing-session-id') {
@@ -83,6 +114,42 @@ export const claudeCommand: CommandDefinition = {
                 if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
                     unknownArgs.push(args[++i])
                 }
+            }
+        }
+
+        for (let i = 0; i < hapiClaudeArgs.length; i++) {
+            const arg = hapiClaudeArgs[i]
+            if (arg === '--dangerously-skip-permissions' || arg === '--yolo') {
+                if (!hasExplicitPermissionMode) {
+                    options.permissionMode = 'bypassPermissions'
+                }
+            } else if (arg === '--permission-mode') {
+                const mode = hapiClaudeArgs[++i]
+                if (!mode || !(CLAUDE_PERMISSION_MODES as readonly string[]).includes(mode)) {
+                    throw new Error(`Invalid --permission-mode value: ${mode ?? '(missing)'}`)
+                }
+                options.permissionMode = mode as StartOptions['permissionMode']
+                hasExplicitPermissionMode = true
+            } else if (arg === '--model') {
+                const model = hapiClaudeArgs[++i]
+                if (!model) {
+                    throw new Error('Missing --model value')
+                }
+                options.model = model
+            } else if (arg === '--effort') {
+                const effort = hapiClaudeArgs[++i]
+                if (!effort) {
+                    throw new Error('Missing --effort value')
+                }
+                options.effort = effort
+            } else if (arg === '--settings') {
+                const settingsPath = hapiClaudeArgs[++i]
+                if (!settingsPath) {
+                    throw new Error('Missing --settings value')
+                }
+                options.claudeSettingsPath = stripEnclosingQuotes(settingsPath)
+            } else {
+                options.claudeArgs = [...(options.claudeArgs || []), arg]
             }
         }
 

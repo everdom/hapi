@@ -9,7 +9,7 @@ import { parseSpecialCommand } from '@/parsers/specialCommands';
 import { getEnvironmentInfo } from '@/ui/doctor';
 import { startHappyServer, toClaudeAllowedHapiMcpTools } from '@/claude/utils/startHappyServer';
 import { startHookServer } from '@/claude/utils/startHookServer';
-import { generateHookSettingsFile, cleanupHookSettingsFile } from '@/modules/common/hooks/generateHookSettings';
+import { generateHookSettingsFile, cleanupHookSettingsFile, mergeClaudeSettingsFile } from '@/modules/common/hooks/generateHookSettings';
 import { registerKillSessionHandler } from './registerKillSessionHandler';
 import type { Session } from './session';
 import { bootstrapExistingSession, bootstrapSession } from '@/agent/sessionFactory';
@@ -41,6 +41,9 @@ export interface StartOptions {
     existingSessionId?: string
     workingDirectory?: string
     resumeSessionId?: string
+    claudeSettingsPath?: string
+    claudeConfigId?: string
+    claudeConfigName?: string
 }
 
 export async function runClaude(options: StartOptions = {}): Promise<void> {
@@ -75,7 +78,17 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
             workingDirectory,
             agentState: initialState,
             model: initialModel ?? undefined,
-            effort: initialEffort ?? undefined
+            effort: initialEffort ?? undefined,
+            metadataOverrides: options.claudeSettingsPath || options.claudeArgs?.length || options.claudeConfigId || options.claudeConfigName
+                ? {
+                    claudeConfig: {
+                        profileId: options.claudeConfigId,
+                        profileName: options.claudeConfigName,
+                        settingsPath: options.claudeSettingsPath,
+                        args: options.claudeArgs
+                    }
+                }
+                : undefined
         });
     const { api, session, sessionInfo } = bootstrap;
     logger.debug(`Session created: ${sessionInfo.id}`);
@@ -199,6 +212,15 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
         filenamePrefix: 'session-hook',
         logLabel: 'generateHookSettings'
     });
+    // If the user supplied --settings, merge it with hapi's auto-generated
+    // hooks so the resulting file preserves user customisations while still
+    // shipping our hook forwarder.
+    const effectiveSettingsPath = options.claudeSettingsPath
+        ? mergeClaudeSettingsFile(options.claudeSettingsPath, hookSettingsPath, {
+            filenamePrefix: 'session-settings',
+            logLabel: 'mergeClaudeSettings'
+        })
+        : hookSettingsPath;
     // The interactive TUI gets a separate settings file that also forwards
     // UserPromptSubmit/PreToolUse (their payloads carry permission_mode), so a
     // mode picked via shift+tab is inherited on local→remote switch. The
@@ -224,6 +246,9 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
         onAfterClose: () => {
             happyServer.stop();
             hookServer.stop();
+            if (effectiveSettingsPath !== hookSettingsPath) {
+                cleanupHookSettingsFile(effectiveSettingsPath, 'mergeClaudeSettings');
+            }
             cleanupHookSettingsFile(hookSettingsPath, 'generateHookSettings');
             cleanupHookSettingsFile(localHookSettingsPath, 'generateHookSettings');
         }
@@ -586,7 +611,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
             claudeArgs: options.claudeArgs,
             startedBy,
             resumeSessionId: options.resumeSessionId,
-            hookSettingsPath,
+            hookSettingsPath: effectiveSettingsPath,
             localHookSettingsPath
         });
     } catch (error) {

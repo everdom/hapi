@@ -51,6 +51,15 @@ export const WorktreeMetadataSchema = z.object({
 
 export type WorktreeMetadata = z.infer<typeof WorktreeMetadataSchema>
 
+export const ClaudeConfigSchema = z.object({
+    profileId: z.string().optional(),
+    profileName: z.string().optional(),
+    settingsPath: z.string().optional(),
+    args: z.array(z.string()).optional()
+})
+
+export type ClaudeConfig = z.infer<typeof ClaudeConfigSchema>
+
 export const MetadataSchema = z.object({
     path: z.string(),
     host: z.string(),
@@ -115,6 +124,7 @@ export const MetadataSchema = z.object({
     lifecycleStateSince: z.number().optional(),
     archivedBy: z.string().optional(),
     archiveReason: z.string().optional(),
+    claudeConfig: ClaudeConfigSchema.optional(),
     // Set only after a completed fresh-session clear. The source row remains
     // archived; web clients use this durable link to follow the replacement.
     supersededBySessionId: z.string().optional(),
