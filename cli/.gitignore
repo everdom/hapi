@@ -37,3 +37,5 @@ pnpm-lock.yaml
 
 **/*.log
 .release-notes-temp.md
+.omc/
+hub/.omc/
