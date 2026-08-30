@@ -1,0 +1,117 @@
+{
+  "updatedAt": "2026-06-29T10:30:59.946Z",
+  "missions": [
+    {
+      "id": "session:44f765e7-3881-4dcf-9dc7-2eca2009207e:none",
+      "source": "session",
+      "name": "none",
+      "objective": "Session mission",
+      "createdAt": "2026-06-29T10:02:53.326Z",
+      "updatedAt": "2026-06-29T10:30:59.946Z",
+      "status": "done",
+      "workerCount": 1,
+      "taskCounts": {
+        "total": 1,
+        "pending": 0,
+        "blocked": 0,
+        "inProgress": 0,
+        "completed": 1,
+        "failed": 0
+      },
+      "agents": [
+        {
+          "name": "git-master:a9e2086",
+          "role": "git-master",
+          "ownership": "a9e20868d61fe8bb7",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-06-29T10:30:59.946Z"
+        }
+      ],
+      "timeline": [
+        {
+          "id": "session-start:a9e20868d61fe8bb7:2026-06-29T10:02:53.326Z",
+          "at": "2026-06-29T10:02:53.326Z",
+          "kind": "update",
+          "agent": "git-master:a9e2086",
+          "detail": "started git-master:a9e2086",
+          "sourceKey": "session-start:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:39.580Z",
+          "at": "2026-06-29T10:30:39.580Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:41.819Z",
+          "at": "2026-06-29T10:30:41.819Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:44.199Z",
+          "at": "2026-06-29T10:30:44.199Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:49.015Z",
+          "at": "2026-06-29T10:30:49.015Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:51.284Z",
+          "at": "2026-06-29T10:30:51.284Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:54.114Z",
+          "at": "2026-06-29T10:30:54.114Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:56.021Z",
+          "at": "2026-06-29T10:30:56.021Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:57.971Z",
+          "at": "2026-06-29T10:30:57.971Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        },
+        {
+          "id": "session-stop:a9e20868d61fe8bb7:2026-06-29T10:30:59.946Z",
+          "at": "2026-06-29T10:30:59.946Z",
+          "kind": "completion",
+          "agent": "git-master:a9e2086",
+          "detail": "completed",
+          "sourceKey": "session-stop:a9e20868d61fe8bb7"
+        }
+      ]
+    }
+  ]
+}

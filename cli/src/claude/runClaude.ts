@@ -214,13 +214,21 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
     });
     // If the user supplied --settings, merge it with hapi's auto-generated
     // hooks so the resulting file preserves user customisations while still
-    // shipping our hook forwarder.
-    const effectiveSettingsPath = options.claudeSettingsPath
+    // shipping our hook forwarder. We also lift the user's `env` block out of
+    // the file and push it into `claudeEnvVars` — Claude Code reads
+    // `~/.claude/settings.json` first and that file's env can shadow the one
+    // we passed through `--settings`, so we have to seed the spawn env too.
+    const mergedSettings = options.claudeSettingsPath
         ? mergeClaudeSettingsFile(options.claudeSettingsPath, hookSettingsPath, {
             filenamePrefix: 'session-settings',
             logLabel: 'mergeClaudeSettings'
         })
-        : hookSettingsPath;
+        : null;
+    const effectiveSettingsPath = mergedSettings?.path ?? hookSettingsPath;
+    const userSettingsEnv = mergedSettings?.envVars ?? {};
+    const claudeEnvVarsForSpawn = Object.keys(userSettingsEnv).length > 0
+        ? { ...(options.claudeEnvVars ?? {}), ...userSettingsEnv }
+        : options.claudeEnvVars;
     // The interactive TUI gets a separate settings file that also forwards
     // UserPromptSubmit/PreToolUse (their payloads carry permission_mode), so a
     // mode picked via shift+tab is inherited on local→remote switch. The
@@ -607,7 +615,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
                 }
             },
             session,
-            claudeEnvVars: options.claudeEnvVars,
+            claudeEnvVars: claudeEnvVarsForSpawn,
             claudeArgs: options.claudeArgs,
             startedBy,
             resumeSessionId: options.resumeSessionId,

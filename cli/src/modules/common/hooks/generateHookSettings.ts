@@ -148,21 +148,37 @@ export function cleanupHookSettingsFile(filepath: string, logLabel: string): voi
 }
 
 /**
+ * Result of merging a user-supplied Claude settings file with hapi's
+ * auto-generated hooks. `path` is the merged settings file hapi hands to
+ * Claude Code via `--settings`; `envVars` is the `env.*` block lifted out of
+ * the user's file so the caller can also push it into the spawn env (Claude
+ * Code reads settings.json's `env` as a process-env seed, and the merged
+ * `--settings` file alone isn't enough — Claude Code still reads
+ * `~/.claude/settings.json` first, and that file's `env` block can shadow the
+ * one we passed through `--settings`).
+ */
+export type MergedClaudeSettings = {
+    path: string
+    envVars: Record<string, string>
+}
+
+/**
  * Merge a user-provided Claude settings file with hapi's auto-generated hook
  * settings. The user's settings are loaded first; then hapi's hooks (and any
  * hapi-only keys like `hooksConfig.enabled`) are overlaid on top. The result
  * is written to a fresh temp file under `<happyHomeDir>/tmp/hooks/` so the
  * user's source file is left untouched.
  *
- * Returns the merged file path. If the user file cannot be read, returns the
- * hook settings path unchanged (so we still ship working hooks, just without
- * user-supplied customisations).
+ * Returns the merged file path + the user-supplied env block lifted out as a
+ * flat key→value map. If the user file cannot be read, returns the hook
+ * settings path unchanged and an empty env map (so we still ship working
+ * hooks, just without user-supplied customisations).
  */
 export function mergeClaudeSettingsFile(
     userSettingsPath: string,
     hookSettingsPath: string,
     options: { filenamePrefix: string; logLabel: string }
-): string {
+): MergedClaudeSettings {
     const hooksDir = join(configuration.happyHomeDir, 'tmp', 'hooks');
     mkdirSync(hooksDir, { recursive: true });
 
@@ -180,7 +196,7 @@ export function mergeClaudeSettingsFile(
         }
     } catch (error) {
         logger.debug(`[${options.logLabel}] Could not read user settings at ${userSettingsPath}: ${error}`);
-        return hookSettingsPath;
+        return { path: hookSettingsPath, envVars: {} };
     }
 
     let hookSettings: Record<string, unknown> = {};
@@ -215,12 +231,25 @@ export function mergeClaudeSettingsFile(
         merged.hooks = mergedHooks;
     }
 
+    // Lift the user-supplied `env` block into a flat key→value map so the
+    // caller can push it into the spawn env. We deliberately do NOT include
+    // hapi-injected vars here — those are managed by the caller.
+    const userEnvRecord = userSettings.env as Record<string, unknown> | undefined;
+    const envVars: Record<string, string> = {};
+    if (userEnvRecord && typeof userEnvRecord === 'object' && !Array.isArray(userEnvRecord)) {
+        for (const [key, value] of Object.entries(userEnvRecord)) {
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                envVars[key] = String(value);
+            }
+        }
+    }
+
     try {
         writeFileSync(mergedPath, JSON.stringify(merged, null, 4));
         logger.debug(`[${options.logLabel}] Merged user settings into: ${mergedPath}`);
-        return mergedPath;
+        return { path: mergedPath, envVars };
     } catch (error) {
         logger.debug(`[${options.logLabel}] Failed to write merged settings: ${error}`);
-        return hookSettingsPath;
+        return { path: hookSettingsPath, envVars };
     }
 }

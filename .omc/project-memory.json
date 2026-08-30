@@ -1,0 +1,354 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1783061953542,
+  "projectRoot": "C:\\Users\\everdom\\.openclaw\\workspace\\projects\\hapi",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "@playwright/test",
+        "version": "1.60.0",
+        "category": "testing"
+      },
+      {
+        "name": "playwright",
+        "version": "1.60.0",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "bun run build:single-exe 2>&1 | tail -50",
+    "testCommand": "npm test",
+    "lintCommand": null,
+    "devCommand": "npm run dev",
+    "scripts": {
+      "build:site": "bun run --cwd website build && bun run --cwd docs docs:build && cp -r docs/.vitepress/dist website/dist/public/docs",
+      "dev": "concurrently \"bun run dev:hub\" \"bun run dev:web\" --kill-others-on-exit",
+      "build": "bun run build:cli && bun run build:web && (cd hub && bun run generate:embedded-web-assets) && bun run build:hub",
+      "build:cli": "bun run typecheck:cli",
+      "build:single-exe": "bun run download:tunwg && bun run build:web && (cd hub && bun run generate:embedded-web-assets) && (cd cli && bun run build:exe:allinone)",
+      "build:single-exe:all": "bun run download:tunwg && bun run build:web && (cd hub && bun run generate:embedded-web-assets) && (cd cli && bun run build:exe:allinone:all)",
+      "download:tunwg": "bun run hub/scripts/download-tunwg.ts",
+      "build:hub": "cd hub && bun run build",
+      "build:web": "cd web && bun run build",
+      "dev:hub": "cd hub && bun run dev",
+      "dev:web": "cd web && bun run dev",
+      "typecheck": "bun run typecheck:cli && bun run typecheck:web && bun run typecheck:hub",
+      "typecheck:cli": "cd cli && bun run typecheck",
+      "typecheck:hub": "cd hub && bun run typecheck",
+      "typecheck:web": "cd web && bun run typecheck",
+      "test": "bun run test:cli && bun run test:hub && bun run test:web && bun run test:shared",
+      "test:cli": "cd cli && bun run test",
+      "test:hub": "cd hub && bun run test",
+      "test:web": "cd web && bun run test",
+      "test:shared": "cd shared && bun run test",
+      "test:e2e": "playwright test",
+      "test:e2e:ui": "playwright test --ui",
+      "clean-session": "bun run hub/scripts/cleanup-sessions.ts",
+      "release-all": "cd cli && bun run release-all"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": true,
+    "workspaces": [
+      "cli",
+      "shared",
+      "hub",
+      "web",
+      "website",
+      "docs"
+    ],
+    "mainDirectories": [
+      "docs",
+      "scripts"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "cli": {
+      "path": "cli",
+      "purpose": null,
+      "fileCount": 13,
+      "lastAccessed": 1783061953420,
+      "keyFiles": [
+        "bunfig.toml",
+        "LICENSE",
+        "local-client-launcher.ts",
+        "NOTICE",
+        "package.json"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1783061953421,
+      "keyFiles": [
+        "index.md",
+        "package.json"
+      ]
+    },
+    "e2e": {
+      "path": "e2e",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1783061953422,
+      "keyFiles": [
+        "scratchlist.spec.ts"
+      ]
+    },
+    "hub": {
+      "path": "hub",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1783061953470,
+      "keyFiles": [
+        "package.json",
+        "README.md",
+        "tsconfig.json"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 2,
+      "lastAccessed": 1783061953470,
+      "keyFiles": [
+        "update-global-hapi.bat",
+        "update-global-hapi.ps1"
+      ]
+    },
+    "shared": {
+      "path": "shared",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1783061953471,
+      "keyFiles": [
+        "package.json",
+        "tsconfig.json"
+      ]
+    },
+    "web": {
+      "path": "web",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1783061953471,
+      "keyFiles": [
+        "index.html",
+        "package.json",
+        "postcss.config.cjs",
+        "README.md",
+        "tailwind.config.ts"
+      ]
+    },
+    "website": {
+      "path": "website",
+      "purpose": null,
+      "fileCount": 10,
+      "lastAccessed": 1783061953471,
+      "keyFiles": [
+        "bun.lock",
+        "components.json",
+        "index.html",
+        "package.json",
+        "tsconfig.json"
+      ]
+    },
+    "cli\\bin": {
+      "path": "cli\\bin",
+      "purpose": "Executable scripts",
+      "fileCount": 1,
+      "lastAccessed": 1783061953472,
+      "keyFiles": [
+        "hapi.cjs"
+      ]
+    },
+    "docs\\public": {
+      "path": "docs\\public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1783061953473,
+      "keyFiles": [
+        "favicon.ico",
+        "logo.svg"
+      ]
+    },
+    "hub\\scripts": {
+      "path": "hub\\scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 3,
+      "lastAccessed": 1783061953474,
+      "keyFiles": [
+        "cleanup-sessions.ts",
+        "download-tunwg.ts",
+        "generate-embedded-web-assets.ts"
+      ]
+    },
+    "hub\\src": {
+      "path": "hub\\src",
+      "purpose": "Source code",
+      "fileCount": 5,
+      "lastAccessed": 1783061953475,
+      "keyFiles": [
+        "configuration.ts",
+        "index.ts",
+        "startHub.d.ts"
+      ]
+    },
+    "shared\\src": {
+      "path": "shared\\src",
+      "purpose": "Source code",
+      "fileCount": 35,
+      "lastAccessed": 1783061953476,
+      "keyFiles": [
+        "apiTypes.ts",
+        "buildInfo.ts",
+        "cursorCliSku.test.ts"
+      ]
+    },
+    "web\\dist": {
+      "path": "web\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 11,
+      "lastAccessed": 1783061953477,
+      "keyFiles": [
+        "404.html",
+        "apple-touch-icon-180x180.png",
+        "favicon.ico"
+      ]
+    },
+    "web\\node_modules": {
+      "path": "web\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 0,
+      "lastAccessed": 1783061953478,
+      "keyFiles": []
+    },
+    "web\\public": {
+      "path": "web\\public",
+      "purpose": "Public files",
+      "fileCount": 8,
+      "lastAccessed": 1783061953479,
+      "keyFiles": [
+        "404.html",
+        "apple-touch-icon-180x180.png",
+        "favicon.ico"
+      ]
+    },
+    "website\\node_modules": {
+      "path": "website\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 0,
+      "lastAccessed": 1783061953480,
+      "keyFiles": []
+    },
+    "website\\public": {
+      "path": "website\\public",
+      "purpose": "Public files",
+      "fileCount": 4,
+      "lastAccessed": 1783061953480,
+      "keyFiles": [
+        "robots.txt",
+        "sitemap.xml",
+        "_redirects"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "hub\\src\\sync\\sessionCache.ts",
+      "accessCount": 5,
+      "lastAccessed": 1783068156510,
+      "type": "file"
+    },
+    {
+      "path": "cli\\src\\commands\\claude.ts",
+      "accessCount": 4,
+      "lastAccessed": 1783080145093,
+      "type": "file"
+    },
+    {
+      "path": "hub/src",
+      "accessCount": 3,
+      "lastAccessed": 1783062317436,
+      "type": "directory"
+    },
+    {
+      "path": "hub\\src\\sync\\syncEngine.ts",
+      "accessCount": 2,
+      "lastAccessed": 1783062242984,
+      "type": "file"
+    },
+    {
+      "path": "cli\\src\\claude\\runClaude.ts",
+      "accessCount": 2,
+      "lastAccessed": 1783071327109,
+      "type": "file"
+    },
+    {
+      "path": "hub/src/sync/sessionCache.ts",
+      "accessCount": 2,
+      "lastAccessed": 1783074488749,
+      "type": "directory"
+    },
+    {
+      "path": "web\\src\\components\\ClaudeResumeConfigDialog.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1783062117928,
+      "type": "file"
+    },
+    {
+      "path": "web\\src\\router.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1783062133380,
+      "type": "file"
+    },
+    {
+      "path": "cli/src",
+      "accessCount": 1,
+      "lastAccessed": 1783062214877,
+      "type": "directory"
+    },
+    {
+      "path": "hub/src/store",
+      "accessCount": 1,
+      "lastAccessed": 1783062291635,
+      "type": "directory"
+    },
+    {
+      "path": "hub\\src\\store\\sessions.ts",
+      "accessCount": 1,
+      "lastAccessed": 1783062305827,
+      "type": "file"
+    },
+    {
+      "path": "cli/src/claude/runClaude.ts",
+      "accessCount": 1,
+      "lastAccessed": 1783071273246,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

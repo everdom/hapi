@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"powershell -Command \\\"cd /c/Users/everdom/.openclaw/workspace/projects/hapi; & ./scripts/update-global-hapi.ps1 -NoRestart -Force\\\" 2>&1\",\"description\":\"Replace global hapi.exe\"}",
+  "error": "Exit code 1\ncd : 找不到路径“C:\\c\\Users\\everdom\\.openclaw\\workspace\\projects\\hapi”，因为该路径不存在。\r\n所在位置 行:1 字符: 1\r\n+ cd /c/Users/everdom/.openclaw/workspace/projects/hapi; & ./scripts/up ...\r\n+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : ObjectNotFound: (C:\\c\\Users\\ever...e\\projects\\hapi:String) [Set-Location], ItemNotFoundE \r\n   xception\r\n    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.SetLocationCommand\r\n \r\n& : 无法将“./scripts/update-global-...",
+  "timestamp": "2026-07-03T08:43:42.270Z",
+  "retry_count": 1
+}
