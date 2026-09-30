@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { useAgentTerminalSocket } from '@/hooks/useAgentTerminalSocket'
 import { useQuickKeyInput, QuickKeyRows } from '@/components/QuickKeys/QuickKeys'
+import { attachTerminalTouchScroll } from '@/lib/terminalTouchScroll'
 import { useAppContext } from '@/lib/app-context'
 
 function resolveThemeColors(): { background: string; foreground: string; selectionBackground: string } {
@@ -104,6 +105,8 @@ export function AgentTerminalView(props: AgentTerminalViewProps) {
         })
         observer.observe(container)
 
+        const detachTouchScroll = attachTerminalTouchScroll(terminal)
+
         onOutputRef.current((data) => {
             terminal.write(data)
         })
@@ -116,6 +119,7 @@ export function AgentTerminalView(props: AgentTerminalViewProps) {
         })
 
         abortController.signal.addEventListener('abort', () => {
+            detachTouchScroll()
             observer.disconnect()
             inputDisposable.dispose()
             fitAddon.dispose()

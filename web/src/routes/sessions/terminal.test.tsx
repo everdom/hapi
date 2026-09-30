@@ -386,12 +386,14 @@ describe('TerminalPage keyboard-aware quick panel', () => {
         expect(screen.getByRole('button', { name: 'ls' })).toBeInTheDocument()
     })
 
-    it('caps the direct key grid with scrolling while the keyboard is open', () => {
+    it('caps the direct key grid to one scrolling row while the keyboard is open', () => {
         renderWithProviders()
         fireEvent.click(screen.getByRole('button', { name: 'Direct' }))
 
         act(() => viewport.resizeTo(390, 500))
-        expect(screen.getByTestId('compact-terminal-quick-keys')).toHaveClass('overflow-y-auto')
+        const grid = screen.getByTestId('compact-terminal-quick-keys')
+        expect(grid).toHaveClass('overflow-y-auto')
+        expect(grid).toHaveClass('max-h-9')
 
         // Closing the keyboard restores the unbounded grid and clears the
         // temporary "expand" opt-in for the next keyboard session.

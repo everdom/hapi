@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { CanvasAddon } from '@xterm/addon-canvas'
 import '@xterm/xterm/css/xterm.css'
 import { ensureBuiltinFontLoaded, getFontProvider } from '@/lib/terminalFont'
+import { attachTerminalTouchScroll } from '@/lib/terminalTouchScroll'
 import { getInitialTerminalFontSize } from '@/hooks/useTerminalFontSize'
 
 function resolveThemeColors(): { background: string; foreground: string; selectionBackground: string } {
@@ -84,6 +85,8 @@ export function TerminalView(props: {
         })
         observer.observe(container)
 
+        const detachTouchScroll = attachTerminalTouchScroll(terminal)
+
         const refreshFont = (forceRemeasure = false) => {
             if (abortController.signal.aborted) return
             const nextFamily = fontProvider.getFontFamily()
@@ -117,6 +120,7 @@ export function TerminalView(props: {
 
         // Cleanup on abort
         abortController.signal.addEventListener('abort', () => {
+            detachTouchScroll()
             observer.disconnect()
             fitAddon.dispose()
             webLinksAddon.dispose()

@@ -842,9 +842,12 @@ export default function TerminalPage() {
                                     </div>
                                 </>
                             ) : (
+                                // Slim: one visible key row (swipe inside to
+                                // reach the rest); the chevron expands the
+                                // full grid on demand.
                                 <div
                                     className={`grid grid-cols-4 gap-1.5 pb-0.5 ${
-                                        panelSlim ? 'max-h-[82px] overflow-y-auto' : ''
+                                        panelSlim ? 'max-h-9 overflow-y-auto' : ''
                                     }`}
                                     data-testid="compact-terminal-quick-keys"
                                 >
