@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useParams } from '@tanstack/react-router'
 import type { Terminal } from '@xterm/xterm'
@@ -119,6 +119,35 @@ function ConnectionIndicator(props: { status: 'idle' | 'connecting' | 'connected
 
 type TerminalInputMode = 'command' | 'direct'
 type DirectKeyPage = 'control' | 'navigation' | 'shell' | 'symbols'
+
+const TAB_TERMINAL_ID_PREFIX = 'hapi-terminal-id:'
+
+// Stable per-tab, per-session terminal id. The hub keeps a terminal's registry
+// slot (and the CLI shell behind it) alive for a 15-minute idle window after
+// the viewer's socket drops so a reconnect with the SAME id can re-attach
+// (handlers/terminal.ts detachBySocket). An id that changed on every mount
+// therefore consumed a fresh slot each time the route was entered, and after
+// four opens locked the session out with "Too many terminals open for this
+// session". Reusing one id per tab turns re-opens into re-attaches while
+// distinct tabs/devices still get distinct ids (hijack protection in
+// terminalRegistry.ts stays intact — a reused id arriving from a different
+// socket is evicted as stale).
+function getOrCreateTabTerminalId(sessionId: string): string {
+    const fresh = `term-${sessionId}-${randomId()}`
+    try {
+        const key = `${TAB_TERMINAL_ID_PREFIX}${sessionId}`
+        const existing = window.sessionStorage.getItem(key)
+        if (existing) {
+            return existing
+        }
+        window.sessionStorage.setItem(key, fresh)
+    } catch {
+        // sessionStorage unavailable (private mode / storage disabled):
+        // fall back to a per-mount id — still functional, just without
+        // slot reuse.
+    }
+    return fresh
+}
 
 const COMPACT_TERMINAL_QUERY = '(max-width: 640px), (pointer: coarse)'
 
@@ -282,20 +311,7 @@ export default function TerminalPage() {
     const goBack = useAppGoBack()
     const { session } = useSession(api, sessionId)
     const terminalSupported = isRemoteTerminalSupported(session?.metadata)
-    // A per-viewer-unique terminal id. Two browsers/tabs/devices viewing the
-    // same session must each drive their own shell: the hub registry evicts a
-    // reused id arriving from a different socket as a stale reconnect
-    // (terminalRegistry.ts), which would otherwise let a second viewer hijack
-    // the first viewer's PTY. The id is intentionally NOT derived from sessionId
-    // alone — scrollback survives navigation via the sessionId-keyed buffer
-    // (userTerminalBuffer.ts), not via a stable id. Held in a ref so it stays
-    // constant across re-renders and transient socket reconnects, and
-    // regenerates only when the route switches to a different session.
-    const terminalIdRef = useRef<{ sessionId: string; id: string } | null>(null)
-    if (terminalIdRef.current?.sessionId !== sessionId) {
-        terminalIdRef.current = { sessionId, id: `term-${sessionId}-${randomId()}` }
-    }
-    const terminalId = terminalIdRef.current.id
+    const terminalId = useMemo(() => getOrCreateTabTerminalId(sessionId), [sessionId])
     const terminalRef = useRef<Terminal | null>(null)
     const commandInputRef = useRef<HTMLTextAreaElement | null>(null)
     const inputDisposableRef = useRef<{ dispose: () => void } | null>(null)

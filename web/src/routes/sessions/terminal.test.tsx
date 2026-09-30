@@ -133,13 +133,30 @@ describe('TerminalPage terminal id', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         capturedTerminalIds.length = 0
+        sessionStorage.clear()
     })
 
-    it('generates a unique terminal id per mount so concurrent viewers do not collide', () => {
-        // Two viewers (tabs/devices) of the SAME session must not share one
-        // terminal id: the hub registry would treat the second viewer's reused
-        // id as a stale reconnect and evict the first viewer's PTY ownership.
+    it('reuses one stable terminal id across mounts in the same tab', () => {
+        // The hub holds each terminal's slot + PTY for a 15-minute reconnect
+        // grace keyed by terminal id. A per-mount id would burn a fresh slot of
+        // the 4-per-session cap on every navigation ("Too many terminals open
+        // for this session"); the same-tab id re-attaches instead.
+        const first = renderWithProviders()
+        first.unmount()
         renderWithProviders()
+
+        const distinct = new Set(capturedTerminalIds)
+        expect(distinct.size).toBe(1)
+        expect([...capturedTerminalIds][0]).toMatch(/^term-session-1-/)
+    })
+
+    it('gives concurrent tabs distinct ids so viewers stay isolated', () => {
+        // Two tabs/devices of the SAME session must not share one terminal id:
+        // the hub registry would treat the second viewer's reused id as a stale
+        // reconnect and evict the first viewer's PTY ownership. sessionStorage
+        // is per tab, so clearing it between renders simulates a second tab.
+        renderWithProviders()
+        sessionStorage.clear()
         renderWithProviders()
 
         const distinct = new Set(capturedTerminalIds)
