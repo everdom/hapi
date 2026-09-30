@@ -367,10 +367,15 @@ describe('TerminalPage keyboard-aware quick panel', () => {
         onExitHandler = null
         viewport = new FakeVisualViewport()
         Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport })
+        vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+            callback(0)
+            return 1
+        })
     })
 
     afterEach(() => {
         Object.defineProperty(window, 'visualViewport', { configurable: true, value: undefined })
+        vi.unstubAllGlobals()
     })
 
     it('hides command templates while the keyboard is open and restores on expand', () => {
@@ -384,6 +389,9 @@ describe('TerminalPage keyboard-aware quick panel', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Expand quick keys' }))
         expect(screen.getByRole('button', { name: 'ls' })).toBeInTheDocument()
+        // The expand tap must not dismiss the on-screen keyboard: focus goes
+        // straight back to the command field.
+        expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Command input' }))
     })
 
     it('caps the direct key grid to one scrolling row while the keyboard is open', () => {

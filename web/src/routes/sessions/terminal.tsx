@@ -344,13 +344,26 @@ export default function TerminalPage() {
 
     const panelSlim = keyboardOpen ? !keyboardPanelExpanded : panelCollapsed
 
+    // Tapping a panel control moves focus to the button, which dismisses the
+    // on-screen keyboard. Same re-focus trick as the quick-key buttons
+    // (handleQuickInput): hand focus back to the active input in the same
+    // gesture tick so the keyboard stays up while the panel expands.
+    const refocusActiveInput = useCallback(() => {
+        if (inputMode === 'command') {
+            commandInputRef.current?.focus()
+        } else {
+            terminalRef.current?.focus()
+        }
+    }, [inputMode])
+
     const handlePanelToggle = useCallback(() => {
         if (keyboardOpen) {
             setKeyboardPanelExpanded((value) => !value)
+            requestAnimationFrame(refocusActiveInput)
         } else {
             setPanelCollapsed((value) => !value)
         }
-    }, [keyboardOpen])
+    }, [keyboardOpen, refocusActiveInput])
 
     const {
         state: terminalState,
@@ -742,7 +755,12 @@ export default function TerminalPage() {
                                                 <button
                                                     key={page}
                                                     type="button"
-                                                    onClick={() => setDirectKeyPage(page)}
+                                                    onClick={() => {
+                                                        setDirectKeyPage(page)
+                                                        if (keyboardOpen) {
+                                                            requestAnimationFrame(refocusActiveInput)
+                                                        }
+                                                    }}
                                                     aria-pressed={active}
                                                     className={`h-8 min-w-0 rounded-md px-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] ${
                                                         active
