@@ -39,6 +39,11 @@ export interface StartOptions {
     claudeArgs?: string[]
     startedBy?: 'runner' | 'terminal'
     existingSessionId?: string
+    /**
+     * Fresh-spawn reserved hub id from `--hapi-session-id` (create/getOrCreate).
+     * Distinct from `existingSessionId` / `--existing-session-id` (reopen).
+     */
+    reservedSessionId?: string
     workingDirectory?: string
     resumeSessionId?: string
     claudeSettingsPath?: string
@@ -79,6 +84,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
             agentState: initialState,
             model: initialModel ?? undefined,
             effort: initialEffort ?? undefined,
+            reservedSessionId: options.reservedSessionId,
             metadataOverrides: options.claudeSettingsPath || options.claudeArgs?.length || options.claudeConfigId || options.claudeConfigName
                 ? {
                     claudeConfig: {
@@ -172,11 +178,14 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
 
     // Start Hook server for receiving Claude session notifications
     const hookServer = await startHookServer({
+        onPermissionRequest: (data, signal) => currentSessionRef.current?.localPermissionBridge.request(data, signal) ?? Promise.resolve(null),
         onSessionHook: (sessionId, data) => {
+            if (data.agent_id !== undefined) return;
             logger.debug(`[START] Session hook received: ${sessionId}`, data);
 
             const currentSession = currentSessionRef.current;
-            if (currentSession) {
+            currentSession?.localPermissionBridge.onHook(data);
+            if (currentSession && (data.hook_event_name === 'SessionStart' || data.hook_event_name === undefined)) {
                 const previousSessionId = currentSession.sessionId;
                 if (previousSessionId !== sessionId) {
                     logger.debug(`[START] Claude session ID changed: ${previousSessionId} -> ${sessionId}`);
@@ -193,6 +202,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
             if (
                 hookPermissionMode
                 && currentSession?.mode === 'local'
+                && sessionId === currentSession.sessionId
                 && hookPermissionMode !== currentPermissionMode
             ) {
                 logger.debug(`[START] Inheriting permission mode from local Claude: ${currentPermissionMode} -> ${hookPermissionMode}`);
@@ -217,7 +227,8 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
     const hapiLocalHookSettingsPath = generateHookSettingsFile(hookServer.port, hookServer.token, {
         filenamePrefix: 'session-hook-local',
         logLabel: 'generateHookSettings',
-        trackPermissionMode: true
+        trackPermissionMode: true,
+        includeLocalPermissions: true
     });
     const hapiSdkHookSettingsPath = generateHookSettingsFile(hookServer.port, hookServer.token, {
         filenamePrefix: 'session-hook',
@@ -268,6 +279,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
         stopKeepAlive: () => currentSessionRef.current?.stopKeepAlive(),
         onAfterClose: () => {
             happyServer.stop();
+            currentSessionRef.current?.localPermissionBridge.stop();
             hookServer.stop();
             if (localHookSettingsPath !== hapiLocalHookSettingsPath) {
                 cleanupHookSettingsFile(localHookSettingsPath, 'mergeClaudeSettings');
@@ -281,7 +293,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
     });
 
     lifecycle.registerProcessHandlers();
-    registerKillSessionHandler(session.rpcHandlerManager, lifecycle);
+    registerKillSessionHandler(session.rpcHandlerManager, lifecycle, session);
     registerLocalHandoffHandler(session.rpcHandlerManager, lifecycle);
 
     const conversationHistory = toConversationHistoryCapabilities(CLAUDE_CONVERSATION_HISTORY)
