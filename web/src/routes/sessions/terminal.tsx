@@ -6,6 +6,7 @@ import { useAppContext } from '@/lib/app-context'
 import { useAppGoBack } from '@/hooks/useAppGoBack'
 import { useSession } from '@/hooks/queries/useSession'
 import { useTerminalSocket } from '@/hooks/useTerminalSocket'
+import { useVirtualKeyboardOpen } from '@/hooks/useVirtualKeyboardOpen'
 import { useQuickKeyInput, QuickKeyRows, type QuickInput } from '@/components/QuickKeys/QuickKeys'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useTranslation } from '@/lib/use-translation'
@@ -75,6 +76,26 @@ function RetryIcon() {
         >
             <path d="M20 6v6h-6" />
             <path d="M20 12a8 8 0 1 0-2.34 5.66" />
+        </svg>
+    )
+}
+
+function PanelChevronIcon({ collapsed }: { collapsed: boolean }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className={collapsed ? '' : 'rotate-180'}
+        >
+            <polyline points="18 15 12 9 6 15" />
         </svg>
     )
 }
@@ -290,6 +311,30 @@ export default function TerminalPage() {
     const [commandDraft, setCommandDraft] = useState('')
     const [pasteDialogOpen, setPasteDialogOpen] = useState(false)
     const [manualPasteText, setManualPasteText] = useState('')
+
+    // The on-screen keyboard steals most of the phone's height; while it is up
+    // the quick panel auto-slims so the terminal keeps usable rows. The
+    // chevron then acts as "show the panel anyway" (keyboardPanelExpanded);
+    // with no keyboard it toggles the user's own collapse preference.
+    const keyboardOpen = useVirtualKeyboardOpen()
+    const [panelCollapsed, setPanelCollapsed] = useState(false)
+    const [keyboardPanelExpanded, setKeyboardPanelExpanded] = useState(false)
+
+    useEffect(() => {
+        if (!keyboardOpen) {
+            setKeyboardPanelExpanded(false)
+        }
+    }, [keyboardOpen])
+
+    const panelSlim = keyboardOpen ? !keyboardPanelExpanded : panelCollapsed
+
+    const handlePanelToggle = useCallback(() => {
+        if (keyboardOpen) {
+            setKeyboardPanelExpanded((value) => !value)
+        } else {
+            setPanelCollapsed((value) => !value)
+        }
+    }, [keyboardOpen])
 
     const {
         state: terminalState,
@@ -637,29 +682,76 @@ export default function TerminalPage() {
                 <div className="mx-auto w-full max-w-content px-3">
                     {compactControls ? (
                         <div className="flex flex-col gap-2 py-2">
-                            <div
-                                className="grid grid-cols-2 rounded-md bg-[var(--app-secondary-bg)] p-0.5"
-                                role="group"
-                                aria-label={t('terminal.inputMode.label')}
-                            >
-                                {(['command', 'direct'] as const).map((mode) => {
-                                    const active = inputMode === mode
-                                    return (
-                                        <button
-                                            key={mode}
-                                            type="button"
-                                            onClick={() => handleInputModeChange(mode)}
-                                            aria-pressed={active}
-                                            className={`h-8 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] ${
-                                                active
-                                                    ? 'bg-[var(--app-bg)] text-[var(--app-fg)] shadow-sm'
-                                                    : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
-                                            }`}
-                                        >
-                                            {t(`terminal.inputMode.${mode}`)}
-                                        </button>
-                                    )
-                                })}
+                            {/* Single control row: input mode tabs, plus the key
+                                page tabs inline in direct mode (a dedicated row
+                                for them was a third of the keyboard-squeezed
+                                panel), plus the expand/collapse chevron. */}
+                            <div className="flex items-center gap-2">
+                                <div
+                                    className={`grid grid-cols-2 rounded-md bg-[var(--app-secondary-bg)] p-0.5 ${
+                                        inputMode === 'direct' ? 'w-[7.5rem] shrink-0' : 'flex-1'
+                                    }`}
+                                    role="group"
+                                    aria-label={t('terminal.inputMode.label')}
+                                >
+                                    {(['command', 'direct'] as const).map((mode) => {
+                                        const active = inputMode === mode
+                                        return (
+                                            <button
+                                                key={mode}
+                                                type="button"
+                                                onClick={() => handleInputModeChange(mode)}
+                                                aria-pressed={active}
+                                                className={`h-8 min-w-0 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] ${
+                                                    active
+                                                        ? 'bg-[var(--app-bg)] text-[var(--app-fg)] shadow-sm'
+                                                        : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
+                                                }`}
+                                            >
+                                                {t(`terminal.inputMode.${mode}`)}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+
+                                {inputMode === 'direct' ? (
+                                    <div
+                                        className="grid min-w-0 flex-1 grid-cols-4 rounded-md bg-[var(--app-secondary-bg)] p-0.5"
+                                        role="group"
+                                        aria-label={t('terminal.direct.pages')}
+                                    >
+                                        {DIRECT_KEY_PAGE_IDS.map((page) => {
+                                            const active = directKeyPage === page
+                                            return (
+                                                <button
+                                                    key={page}
+                                                    type="button"
+                                                    onClick={() => setDirectKeyPage(page)}
+                                                    aria-pressed={active}
+                                                    className={`h-8 min-w-0 rounded-md px-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] ${
+                                                        active
+                                                            ? 'bg-[var(--app-bg)] text-[var(--app-fg)] shadow-sm'
+                                                            : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
+                                                    }`}
+                                                >
+                                                    <span className="block truncate">
+                                                        {t(`terminal.direct.page.${page}`)}
+                                                    </span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                ) : null}
+
+                                <button
+                                    type="button"
+                                    onClick={handlePanelToggle}
+                                    aria-label={panelSlim ? t('terminal.panel.expand') : t('terminal.panel.collapse')}
+                                    title={panelSlim ? t('terminal.panel.expand') : t('terminal.panel.collapse')}
+                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--app-border)] text-[var(--app-hint)] transition-colors hover:bg-[var(--app-subtle-bg)] hover:text-[var(--app-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)]"
+                                >
+                                    <PanelChevronIcon collapsed={panelSlim} />
+                                </button>
                             </div>
 
                             {inputMode === 'command' ? (
@@ -694,23 +786,28 @@ export default function TerminalPage() {
 
                             {inputMode === 'command' ? (
                                 <>
-                                    <div
-                                        className="grid grid-cols-4 gap-1.5"
-                                        role="group"
-                                        aria-label={t('terminal.command.shortcuts')}
-                                    >
-                                        {BASIC_COMMANDS.map((item) => (
-                                            <button
-                                                key={item.label}
-                                                type="button"
-                                                onClick={() => handleCommandTemplate(item.command)}
-                                                disabled={quickInputDisabled}
-                                                className="h-9 min-w-0 overflow-hidden rounded-md border border-[var(--app-border)] bg-[var(--app-secondary-bg)] px-1 text-[11px] font-medium text-[var(--app-fg)] transition-colors hover:bg-[var(--app-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-button)] disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                <span className="block truncate font-mono">{item.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {/* Slim keeps the text field and the two
+                                        escape keys; the command templates are
+                                        the least-needed rows under a keyboard. */}
+                                    {panelSlim ? null : (
+                                        <div
+                                            className="grid grid-cols-4 gap-1.5"
+                                            role="group"
+                                            aria-label={t('terminal.command.shortcuts')}
+                                        >
+                                            {BASIC_COMMANDS.map((item) => (
+                                                <button
+                                                    key={item.label}
+                                                    type="button"
+                                                    onClick={() => handleCommandTemplate(item.command)}
+                                                    disabled={quickInputDisabled}
+                                                    className="h-9 min-w-0 overflow-hidden rounded-md border border-[var(--app-border)] bg-[var(--app-secondary-bg)] px-1 text-[11px] font-medium text-[var(--app-fg)] transition-colors hover:bg-[var(--app-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-button)] disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    <span className="block truncate font-mono">{item.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                     <div
                                         className="grid grid-cols-4 gap-1.5 pb-0.5"
                                         data-testid="compact-terminal-quick-keys"
@@ -729,67 +826,41 @@ export default function TerminalPage() {
                                     </div>
                                 </>
                             ) : (
-                                <>
-                                    <div
-                                        className="grid grid-cols-4 rounded-md bg-[var(--app-secondary-bg)] p-0.5"
-                                        role="group"
-                                        aria-label={t('terminal.direct.pages')}
-                                    >
-                                        {DIRECT_KEY_PAGE_IDS.map((page) => {
-                                            const active = directKeyPage === page
-                                            return (
-                                                <button
-                                                    key={page}
-                                                    type="button"
-                                                    onClick={() => setDirectKeyPage(page)}
-                                                    aria-pressed={active}
-                                                    className={`h-8 min-w-0 rounded-md px-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] ${
-                                                        active
-                                                            ? 'bg-[var(--app-bg)] text-[var(--app-fg)] shadow-sm'
-                                                            : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
-                                                    }`}
-                                                >
-                                                    <span className="block truncate">
-                                                        {t(`terminal.direct.page.${page}`)}
-                                                    </span>
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                    <div
-                                        className="grid grid-cols-4 gap-1.5 pb-0.5"
-                                        data-testid="compact-terminal-quick-keys"
-                                    >
-                                        {directKeyPage === 'control' ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    void handlePasteAction()
-                                                }}
+                                <div
+                                    className={`grid grid-cols-4 gap-1.5 pb-0.5 ${
+                                        panelSlim ? 'max-h-[82px] overflow-y-auto' : ''
+                                    }`}
+                                    data-testid="compact-terminal-quick-keys"
+                                >
+                                    {directKeyPage === 'control' ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                void handlePasteAction()
+                                            }}
+                                            disabled={quickInputDisabled}
+                                            className="h-9 min-w-0 rounded-md border border-[var(--app-border)] bg-[var(--app-secondary-bg)] px-1.5 text-xs font-medium text-[var(--app-fg)] transition-colors hover:bg-[var(--app-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-button)] disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {t('button.paste')}
+                                        </button>
+                                    ) : null}
+                                    {COMPACT_DIRECT_INPUTS[directKeyPage].map((input) => {
+                                        const modifier = input.modifier
+                                        const isActive =
+                                            (modifier === 'ctrl' && ctrlActive) || (modifier === 'alt' && altActive)
+                                        return (
+                                            <QuickKeyButton
+                                                key={input.label}
+                                                input={input}
                                                 disabled={quickInputDisabled}
-                                                className="h-9 min-w-0 rounded-md border border-[var(--app-border)] bg-[var(--app-secondary-bg)] px-1.5 text-xs font-medium text-[var(--app-fg)] transition-colors hover:bg-[var(--app-subtle-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-button)] disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                {t('button.paste')}
-                                            </button>
-                                        ) : null}
-                                        {COMPACT_DIRECT_INPUTS[directKeyPage].map((input) => {
-                                            const modifier = input.modifier
-                                            const isActive =
-                                                (modifier === 'ctrl' && ctrlActive) || (modifier === 'alt' && altActive)
-                                            return (
-                                                <QuickKeyButton
-                                                    key={input.label}
-                                                    input={input}
-                                                    disabled={quickInputDisabled}
-                                                    isActive={isActive}
-                                                    onPress={handleQuickInput}
-                                                    onToggleModifier={handleModifierToggle}
-                                                    compact
-                                                />
-                                            )
-                                        })}
-                                    </div>
-                                </>
+                                                isActive={isActive}
+                                                onPress={handleQuickInput}
+                                                onToggleModifier={handleModifierToggle}
+                                                compact
+                                            />
+                                        )
+                                    })}
+                                </div>
                             )}
                         </div>
                     ) : (

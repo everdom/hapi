@@ -467,6 +467,8 @@ export default {
   'terminal.inputMode.label': 'Terminal input mode',
   'terminal.inputMode.command': 'Command',
   'terminal.inputMode.direct': 'Direct',
+  'terminal.panel.expand': 'Expand quick keys',
+  'terminal.panel.collapse': 'Collapse quick keys',
   'terminal.command.placeholder': 'Enter a command…',
   'terminal.command.inputLabel': 'Command input',
   'terminal.command.run': 'Run command',

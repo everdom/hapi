@@ -465,6 +465,8 @@ export default {
   'terminal.inputMode.label': '终端输入模式',
   'terminal.inputMode.command': '命令',
   'terminal.inputMode.direct': '直接',
+  'terminal.panel.expand': '展开快捷按键',
+  'terminal.panel.collapse': '收起快捷按键',
   'terminal.command.placeholder': '输入命令…',
   'terminal.command.inputLabel': '命令输入',
   'terminal.command.run': '执行命令',

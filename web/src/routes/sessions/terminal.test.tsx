@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nProvider } from '@/lib/i18n-context'
 import TerminalPage, { buildTerminalCommandSequence } from './terminal'
@@ -327,6 +327,76 @@ describe('TerminalPage compact command input', () => {
         expect(writeMock).toHaveBeenNthCalledWith(2, '\u0013')
         // Keep Ctrl+L; density still fits a 4-col grid with the two Jed chords.
         expect(screen.getByRole('button', { name: 'Clear screen' })).toBeInTheDocument()
+    })
+})
+
+class FakeVisualViewport extends EventTarget {
+    width = 390
+    height = 800
+
+    resizeTo(width: number, height: number) {
+        this.width = width
+        this.height = height
+        this.dispatchEvent(new Event('resize'))
+    }
+}
+
+describe('TerminalPage keyboard-aware quick panel', () => {
+    let viewport: FakeVisualViewport
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        setCompactTerminalControls(true)
+        onExitHandler = null
+        viewport = new FakeVisualViewport()
+        Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport })
+    })
+
+    afterEach(() => {
+        Object.defineProperty(window, 'visualViewport', { configurable: true, value: undefined })
+    })
+
+    it('hides command templates while the keyboard is open and restores on expand', () => {
+        renderWithProviders()
+        expect(screen.getByRole('button', { name: 'ls' })).toBeInTheDocument()
+
+        act(() => viewport.resizeTo(390, 500))
+        expect(screen.queryByRole('button', { name: 'ls' })).not.toBeInTheDocument()
+        // The Ctrl+C / Esc row stays — it is the point of the panel mid-typing.
+        expect(screen.getByRole('button', { name: 'Interrupt process' })).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand quick keys' }))
+        expect(screen.getByRole('button', { name: 'ls' })).toBeInTheDocument()
+    })
+
+    it('caps the direct key grid with scrolling while the keyboard is open', () => {
+        renderWithProviders()
+        fireEvent.click(screen.getByRole('button', { name: 'Direct' }))
+
+        act(() => viewport.resizeTo(390, 500))
+        expect(screen.getByTestId('compact-terminal-quick-keys')).toHaveClass('overflow-y-auto')
+
+        // Closing the keyboard restores the unbounded grid and clears the
+        // temporary "expand" opt-in for the next keyboard session.
+        act(() => viewport.resizeTo(390, 800))
+        expect(screen.getByTestId('compact-terminal-quick-keys')).not.toHaveClass('overflow-y-auto')
+    })
+
+    it('restores the full command panel when the keyboard closes after an expand', () => {
+        renderWithProviders()
+        act(() => viewport.resizeTo(390, 500))
+        fireEvent.click(screen.getByRole('button', { name: 'Expand quick keys' }))
+        act(() => viewport.resizeTo(390, 800))
+
+        expect(screen.getByRole('button', { name: 'ls' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Collapse quick keys' })).toBeInTheDocument()
+    })
+
+    it('lets the chevron collapse the panel manually with no keyboard open', () => {
+        renderWithProviders()
+        fireEvent.click(screen.getByRole('button', { name: 'Collapse quick keys' }))
+        expect(screen.queryByRole('button', { name: 'ls' })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Expand quick keys' })).toBeInTheDocument()
     })
 })
 
