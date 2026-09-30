@@ -2,6 +2,7 @@ import type {
     AttachmentMetadata,
     AuthResponse,
     ClaudeConfig,
+    ClaudeProfile,
     CodexLocalSessionsResponse,
     CodexDuplicateSessionsResponse,
     CodexMergeDuplicateSessionsResponse,
@@ -258,6 +259,17 @@ export class ApiClient {
 
     async getSessions(): Promise<SessionsResponse> {
         return await this.request<SessionsResponse>('/api/sessions')
+    }
+
+    async getClaudeProfiles(): Promise<{ profiles: ClaudeProfile[] }> {
+        return await this.request<{ profiles: ClaudeProfile[] }>('/api/claude-profiles')
+    }
+
+    async saveClaudeProfiles(profiles: ClaudeProfile[]): Promise<{ profiles: ClaudeProfile[] }> {
+        return await this.request<{ profiles: ClaudeProfile[] }>('/api/claude-profiles', {
+            method: 'PUT',
+            body: JSON.stringify({ profiles })
+        })
     }
 
     async getHealth(): Promise<HubHealthResponse> {

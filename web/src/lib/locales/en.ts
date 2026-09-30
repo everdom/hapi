@@ -403,6 +403,7 @@ export default {
   'newSession.claudeProfile.customDesc': 'Provide a settings file and/or extra args without saving them as a profile. Useful for trying a custom config once.',
   'newSession.claudeProfile.error.name': 'Please enter a profile name.',
   'newSession.claudeProfile.error.empty': 'Provide at least a settings file path or one CLI arg.',
+  'newSession.claudeProfile.syncFailed': 'Could not sync to the server; this change is saved on this device only and will retry on the next save.',
   'newSession.grokAutoUnavailable': 'unavailable',
   'newSession.grokAutoUnavailableDesc': 'Grok did not enable Auto permissions for this account or CLI build.',
   'newSession.create': 'Create',

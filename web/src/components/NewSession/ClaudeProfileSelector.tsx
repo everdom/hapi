@@ -1,6 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ApiClient } from '@/api/client'
 import type { ClaudeProfile } from '@/lib/claude-profiles'
-import { CLAUDE_CUSTOM_PROFILE_ID, createClaudeProfile, loadClaudeProfiles, saveClaudeProfiles } from '@/lib/claude-profiles'
+import {
+    CLAUDE_CUSTOM_PROFILE_ID,
+    createClaudeProfile,
+    fetchClaudeProfiles,
+    loadClaudeProfiles,
+    pushClaudeProfiles,
+    saveClaudeProfiles
+} from '@/lib/claude-profiles'
 import { useTranslation } from '@/lib/use-translation'
 import type { AgentType } from './types'
 
@@ -24,6 +32,7 @@ function deriveCustomName(settingsPath: string, args: string[], fallback: string
 }
 
 type Props = {
+    api: ApiClient
     agent: AgentType
     selectedProfileId: string
     isDisabled: boolean
@@ -42,7 +51,22 @@ export function ClaudeProfileSelector(props: Props) {
     const [customSettingsPath, setCustomSettingsPath] = useState('')
     const [customArgsText, setCustomArgsText] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const [syncWarning, setSyncWarning] = useState<string | null>(null)
     const isCustomSelected = props.selectedProfileId === CLAUDE_CUSTOM_PROFILE_ID
+    // Keep the latest push result in sync even if the hub normalizes entries;
+    // track mount state so a slow first fetch cannot overwrite newer edits.
+    const mountedRef = useRef(true)
+    useEffect(() => {
+        mountedRef.current = true
+        void fetchClaudeProfiles(props.api).then((fetched) => {
+            if (mountedRef.current) {
+                setProfiles(fetched)
+            }
+        })
+        return () => {
+            mountedRef.current = false
+        }
+    }, [props.api])
 
     const customProfile = useMemo<ClaudeProfile | null>(() => {
         const trimmedSettingsPath = customSettingsPath.trim()
@@ -101,6 +125,15 @@ export function ClaudeProfileSelector(props: Props) {
     const persistProfiles = (nextProfiles: ClaudeProfile[]) => {
         setProfiles(nextProfiles)
         saveClaudeProfiles(nextProfiles)
+        void pushClaudeProfiles(props.api, nextProfiles).then((saved) => {
+            if (!mountedRef.current) return
+            if (saved) {
+                setProfiles(saved)
+                setSyncWarning(null)
+            } else {
+                setSyncWarning(t('newSession.claudeProfile.syncFailed'))
+            }
+        })
     }
 
     const saveProfile = () => {
@@ -188,6 +221,9 @@ export function ClaudeProfileSelector(props: Props) {
                 <div className="text-xs text-[var(--app-hint)]">
                     {selectedProfile.settingsPath || selectedProfile.args.join(' ')}
                 </div>
+            ) : null}
+            {syncWarning ? (
+                <div className="text-xs text-amber-600">{syncWarning}</div>
             ) : null}
             {isCustomSelected ? (
                 <div className="flex flex-col gap-2 rounded-lg border border-[var(--app-divider)] p-3">

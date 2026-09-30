@@ -89,6 +89,15 @@ export type {
     HapiSessionExportWarning
 } from '@hapi/protocol/sessionExport'
 
+export type ClaudeProfile = {
+    id: string
+    name: string
+    settingsPath: string
+    args: string[]
+    createdAt: number
+    updatedAt: number
+}
+
 export type SessionMetadataSummary = {
     path: string
     host: string

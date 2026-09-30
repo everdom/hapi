@@ -80,6 +80,7 @@ import {
     type ClaudeProfile,
     loadClaudeProfiles,
     profileToClaudeConfig,
+    pushClaudeProfiles,
     saveClaudeProfiles
 } from '@/lib/claude-profiles'
 import { SessionTypeSelector } from './SessionTypeSelector'
@@ -1681,7 +1682,8 @@ export function NewSession(props: {
             }
 
             // Persist a one-off Claude custom profile into the user's saved profile list
-            // so it shows up in the selector on subsequent runs.
+            // so it shows up in the selector on subsequent runs. The hub is the source of
+            // truth for cross-device sync; mirror the upload without blocking spawn.
             const persistCustomClaudeProfile = (profile: ClaudeProfile): ClaudeProfile => {
                 const profiles = loadClaudeProfiles()
                 const existingProfile = findMatchingClaudeProfile(profiles, profile)
@@ -1693,6 +1695,7 @@ export function NewSession(props: {
                     args: profile.args
                 })
                 saveClaudeProfiles([...profiles, savedProfile])
+                void pushClaudeProfiles(props.api, [...profiles, savedProfile])
                 return savedProfile
             }
             let resolvedClaudeProfile = agent === 'claude' && claudeProfile?.id === CLAUDE_CUSTOM_PROFILE_ID
@@ -2021,6 +2024,7 @@ export function NewSession(props: {
                 />
             ) : null}
             <ClaudeProfileSelector
+                api={props.api}
                 agent={agent}
                 selectedProfileId={claudeProfileId}
                 isDisabled={isFormDisabled}

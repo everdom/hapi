@@ -1,16 +1,15 @@
-import type { ClaudeConfig } from '@/types/api'
+import type { ApiClient } from '@/api/client'
+import type { ClaudeConfig, ClaudeProfile } from '@/types/api'
 
 const PROFILES_STORAGE_KEY = 'hapi:claudeProfiles'
+// Marks that this device already synced against the hub at least once. The
+// one-time local→hub migration must only seed from the device that still has
+// legacy localStorage data; without this flag a device whose cache holds stale
+// entries could resurrect profiles another device deleted from the hub.
+const MIGRATION_DONE_KEY = 'hapi:claudeProfiles.migrated'
 export const CLAUDE_CUSTOM_PROFILE_ID = 'custom'
 
-export type ClaudeProfile = {
-    id: string
-    name: string
-    settingsPath: string
-    args: string[]
-    createdAt: number
-    updatedAt: number
-}
+export type { ClaudeProfile }
 
 function makeId(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -57,6 +56,67 @@ export function saveClaudeProfiles(profiles: ClaudeProfile[]): void {
         localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles))
     } catch {
         // Ignore storage errors
+    }
+}
+
+function hasProfileMigrationDone(): boolean {
+    try {
+        return localStorage.getItem(MIGRATION_DONE_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+
+function markProfileMigrationDone(): void {
+    try {
+        localStorage.setItem(MIGRATION_DONE_KEY, '1')
+    } catch {
+        // Ignore storage errors
+    }
+}
+
+/**
+ * Upload the full profile list to the hub and refresh the local cache with the
+ * hub-normalized result. Returns null when the hub rejected/failed the write —
+ * the caller keeps the optimistic local copy and can retry on the next save.
+ */
+export async function pushClaudeProfiles(api: ApiClient, profiles: ClaudeProfile[]): Promise<ClaudeProfile[] | null> {
+    try {
+        const response = await api.saveClaudeProfiles(profiles)
+        const saved = Array.isArray(response?.profiles) ? response.profiles : profiles
+        saveClaudeProfiles(saved)
+        return saved
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Hub-backed profile list with localStorage as cache.
+ *
+ * - Hub has profiles → hub wins, cache refreshed (devices converge on edits/deletes).
+ * - Hub empty and this device still holds legacy localStorage profiles →
+ *   one-time migration: upload local as the seed (guarded by a migrated flag
+ *   so deleted-from-hub profiles cannot resurrect from another device's stale cache).
+ * - Hub unreachable → serve cache.
+ */
+export async function fetchClaudeProfiles(api: ApiClient): Promise<ClaudeProfile[]> {
+    try {
+        const response = await api.getClaudeProfiles()
+        const remote = Array.isArray(response?.profiles) ? response.profiles : []
+        if (remote.length === 0 && !hasProfileMigrationDone()) {
+            const local = loadClaudeProfiles()
+            if (local.length > 0) {
+                markProfileMigrationDone()
+                await pushClaudeProfiles(api, local)
+                return loadClaudeProfiles()
+            }
+        }
+        markProfileMigrationDone()
+        saveClaudeProfiles(remote)
+        return remote
+    } catch {
+        return loadClaudeProfiles()
     }
 }
 

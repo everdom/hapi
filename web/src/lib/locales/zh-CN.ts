@@ -401,6 +401,7 @@ export default {
   'newSession.claudeProfile.customDesc': '提供配置文件路径和/或额外参数，但不会保存为配置。适用于临时试用自定义配置。',
   'newSession.claudeProfile.error.name': '请输入配置名称。',
   'newSession.claudeProfile.error.empty': '至少需要提供配置文件路径或一个 CLI 参数。',
+  'newSession.claudeProfile.syncFailed': '无法同步到服务器，此改动仅保存在本设备，下次保存时会自动重试。',
   'newSession.grokAutoUnavailable': '不可用',
   'newSession.grokAutoUnavailableDesc': 'Grok 尚未为此账号或 CLI 版本启用自动权限模式。',
   'newSession.create': '创建',
