@@ -362,6 +362,7 @@ describe('TerminalPage keyboard-aware quick panel', () => {
     let viewport: FakeVisualViewport
 
     beforeEach(() => {
+        vi.useFakeTimers()
         vi.clearAllMocks()
         setCompactTerminalControls(true)
         onExitHandler = null
@@ -374,8 +375,17 @@ describe('TerminalPage keyboard-aware quick panel', () => {
     })
 
     afterEach(() => {
+        vi.useRealTimers()
         Object.defineProperty(window, 'visualViewport', { configurable: true, value: undefined })
         vi.unstubAllGlobals()
+    })
+
+    it('panel controls cancel pointerdown so the keyboard is never dropped', () => {
+        renderWithProviders()
+        const chevron = screen.getByRole('button', { name: 'Collapse quick keys' })
+        // fireEvent returns false once preventDefault was called: focus must
+        // not move to the button, otherwise the keyboard flickers away.
+        expect(fireEvent.pointerDown(chevron, { pointerType: 'touch' })).toBe(false)
     })
 
     it('hides command templates while the keyboard is open and restores on expand', () => {
@@ -403,9 +413,13 @@ describe('TerminalPage keyboard-aware quick panel', () => {
         expect(grid).toHaveClass('overflow-y-auto')
         expect(grid).toHaveClass('max-h-9')
 
-        // Closing the keyboard restores the unbounded grid and clears the
-        // temporary "expand" opt-in for the next keyboard session.
+        // Closing the keyboard (after its debounce) restores the unbounded
+        // grid and clears the temporary "expand" opt-in for the next keyboard
+        // session.
         act(() => viewport.resizeTo(390, 800))
+        act(() => {
+            vi.advanceTimersByTime(250)
+        })
         expect(screen.getByTestId('compact-terminal-quick-keys')).not.toHaveClass('overflow-y-auto')
     })
 
@@ -414,6 +428,9 @@ describe('TerminalPage keyboard-aware quick panel', () => {
         act(() => viewport.resizeTo(390, 500))
         fireEvent.click(screen.getByRole('button', { name: 'Expand quick keys' }))
         act(() => viewport.resizeTo(390, 800))
+        act(() => {
+            vi.advanceTimersByTime(250)
+        })
 
         expect(screen.getByRole('button', { name: 'ls' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Collapse quick keys' })).toBeInTheDocument()

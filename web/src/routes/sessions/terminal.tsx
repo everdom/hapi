@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { useParams } from '@tanstack/react-router'
 import type { Terminal } from '@xterm/xterm'
 import { useAppContext } from '@/lib/app-context'
@@ -151,6 +151,16 @@ function getOrCreateTabTerminalId(sessionId: string): string {
 
 const COMPACT_TERMINAL_QUERY = '(max-width: 640px), (pointer: coarse)'
 
+// Tapping a panel control normally moves focus to the button, which instantly
+// dismisses the on-screen keyboard on phones — and a flickering keyboard makes
+// the keyboardOpen state flip mid-gesture, racing the expand/collapse toggle
+// (the click would then hit the wrong branch: "flash but nothing expands").
+// Cancelling pointerdown suppresses the focus change and the compatibility
+// mouse events; browsers still dispatch click, so the button keeps working.
+function preventFocusSteal(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault()
+}
+
 function useCompactTerminalControls(): boolean {
     const [compact, setCompact] = useState(
         () => typeof window !== 'undefined' && window.matchMedia(COMPACT_TERMINAL_QUERY).matches
@@ -290,6 +300,7 @@ function QuickKeyButton(props: {
         <button
             type="button"
             {...longPressHandlers}
+            onPointerDown={preventFocusSteal}
             disabled={disabled}
             aria-pressed={modifier ? isActive : undefined}
             className={`${compact ? 'h-9 min-w-0 w-full rounded-md border border-[var(--app-border)]' : 'flex-1 border-l border-[var(--app-border)] first:border-l-0'} px-2 py-1.5 text-xs font-medium text-[var(--app-fg)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-button)] focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent active:bg-[var(--app-subtle-bg)] sm:px-3 sm:text-sm ${
@@ -729,6 +740,7 @@ export default function TerminalPage() {
                                             <button
                                                 key={mode}
                                                 type="button"
+                                                onPointerDown={preventFocusSteal}
                                                 onClick={() => handleInputModeChange(mode)}
                                                 aria-pressed={active}
                                                 className={`h-8 min-w-0 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-link)] ${
@@ -755,6 +767,7 @@ export default function TerminalPage() {
                                                 <button
                                                     key={page}
                                                     type="button"
+                                                    onPointerDown={preventFocusSteal}
                                                     onClick={() => {
                                                         setDirectKeyPage(page)
                                                         if (keyboardOpen) {
@@ -779,6 +792,7 @@ export default function TerminalPage() {
 
                                 <button
                                     type="button"
+                                    onPointerDown={preventFocusSteal}
                                     onClick={handlePanelToggle}
                                     aria-label={panelSlim ? t('terminal.panel.expand') : t('terminal.panel.collapse')}
                                     title={panelSlim ? t('terminal.panel.expand') : t('terminal.panel.collapse')}

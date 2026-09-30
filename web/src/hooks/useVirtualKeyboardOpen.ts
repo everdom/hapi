@@ -19,7 +19,14 @@ const KEYBOARD_MIN_HEIGHT_PX = 140
  * rotation / split-screen / desktop window resize change the width too and
  * re-baseline the comparison instead of faking a keyboard.
  */
-export function useVirtualKeyboardOpen(threshold = KEYBOARD_MIN_HEIGHT_PX): boolean {
+// A tap on a panel control can very briefly steal focus from the input and
+// collapse the keyboard before it is re-asserted. Closing is therefore
+// debounced: a transient dip that recovers within the window never flips the
+// state (which would race UI that depends on "keyboard open"). Opens are
+// reported immediately — the squeeze must be reacted to at once.
+const DEFAULT_CLOSE_DELAY_MS = 200
+
+export function useVirtualKeyboardOpen(threshold = KEYBOARD_MIN_HEIGHT_PX, closeDelayMs = DEFAULT_CLOSE_DELAY_MS): boolean {
     const [open, setOpen] = useState(false)
 
     useEffect(() => {
@@ -30,6 +37,8 @@ export function useVirtualKeyboardOpen(threshold = KEYBOARD_MIN_HEIGHT_PX): bool
 
         let stableHeight = viewport.height
         let stableWidth = viewport.width
+        let currentOpen = false
+        let closeTimer: ReturnType<typeof setTimeout> | null = null
 
         const update = () => {
             const { height, width } = viewport
@@ -41,7 +50,23 @@ export function useVirtualKeyboardOpen(threshold = KEYBOARD_MIN_HEIGHT_PX): bool
             } else if (height > stableHeight) {
                 stableHeight = height
             }
-            setOpen(stableHeight - height > threshold)
+            const rawOpen = stableHeight - height > threshold
+            if (rawOpen) {
+                if (closeTimer) {
+                    clearTimeout(closeTimer)
+                    closeTimer = null
+                }
+                if (!currentOpen) {
+                    currentOpen = true
+                    setOpen(true)
+                }
+            } else if (currentOpen && !closeTimer) {
+                closeTimer = setTimeout(() => {
+                    closeTimer = null
+                    currentOpen = false
+                    setOpen(false)
+                }, closeDelayMs)
+            }
         }
 
         update()
@@ -50,8 +75,11 @@ export function useVirtualKeyboardOpen(threshold = KEYBOARD_MIN_HEIGHT_PX): bool
         return () => {
             viewport.removeEventListener('resize', update)
             viewport.removeEventListener('scroll', update)
+            if (closeTimer) {
+                clearTimeout(closeTimer)
+            }
         }
-    }, [threshold])
+    }, [threshold, closeDelayMs])
 
     return open
 }

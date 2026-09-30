@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useVirtualKeyboardOpen } from './useVirtualKeyboardOpen'
 
@@ -16,6 +16,7 @@ class FakeVisualViewport extends EventTarget {
 let viewport: FakeVisualViewport | undefined
 
 beforeEach(() => {
+    vi.useFakeTimers()
     viewport = new FakeVisualViewport()
     Object.defineProperty(window, 'visualViewport', {
         configurable: true,
@@ -24,6 +25,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+    vi.useRealTimers()
     Object.defineProperty(window, 'visualViewport', {
         configurable: true,
         value: undefined,
@@ -36,13 +38,30 @@ describe('useVirtualKeyboardOpen', () => {
         expect(result.current).toBe(false)
     })
 
-    it('opens when height shrinks with unchanged width (keyboard)', () => {
+    it('opens immediately and closes only after the debounce window', () => {
         const { result } = renderHook(() => useVirtualKeyboardOpen())
         act(() => viewport!.resizeTo(390, 520))
         expect(result.current).toBe(true)
 
         act(() => viewport!.resizeTo(390, 800))
+        // Closing is debounced so a focus-stealing tap that re-asserts the
+        // keyboard instantly does not flip the state mid-gesture.
+        expect(result.current).toBe(true)
+        act(() => {
+            vi.advanceTimersByTime(250)
+        })
         expect(result.current).toBe(false)
+    })
+
+    it('stays open when a close recovers within the debounce window', () => {
+        const { result } = renderHook(() => useVirtualKeyboardOpen())
+        act(() => viewport!.resizeTo(390, 520))
+        act(() => viewport!.resizeTo(390, 800))
+        act(() => viewport!.resizeTo(390, 520))
+        act(() => {
+            vi.advanceTimersByTime(500)
+        })
+        expect(result.current).toBe(true)
     })
 
     it('ignores small height dips (browser chrome, not a keyboard)', () => {
