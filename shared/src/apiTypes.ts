@@ -74,7 +74,9 @@ export type CreateSessionResponse = z.infer<typeof CreateSessionResponseSchema>
 export const HubSettingsResponseSchema = z.object({
     sessionSummaryContract: z.boolean(),
     /** Show compact AGENT_NOTIFY_SUMMARY in chat (default off / hide). */
-    sessionSummaryInChat: z.boolean()
+    sessionSummaryInChat: z.boolean(),
+    /** cc-switch SQLite database path override (null = default ~/.cc-switch/cc-switch.db). */
+    ccSwitchDbPath: z.string().nullable()
 })
 
 export type HubSettingsResponse = z.infer<typeof HubSettingsResponseSchema>
@@ -82,10 +84,13 @@ export type HubSettingsResponse = z.infer<typeof HubSettingsResponseSchema>
 export const UpdateHubSettingsRequestSchema = z
     .object({
         sessionSummaryContract: z.boolean().optional(),
-        sessionSummaryInChat: z.boolean().optional()
+        sessionSummaryInChat: z.boolean().optional(),
+        ccSwitchDbPath: z.string().nullable().optional()
     })
     .refine(
-        (data) => data.sessionSummaryContract !== undefined || data.sessionSummaryInChat !== undefined,
+        (data) => data.sessionSummaryContract !== undefined
+            || data.sessionSummaryInChat !== undefined
+            || data.ccSwitchDbPath !== undefined,
         { message: 'At least one hub setting field is required' }
     )
 

@@ -98,6 +98,13 @@ export type ClaudeProfile = {
     updatedAt: number
 }
 
+/** A Claude provider listed from the local cc-switch database (no secrets). */
+export type CcSwitchProvider = {
+    id: string
+    name: string
+    isCurrent: boolean
+}
+
 export type SessionMetadataSummary = {
     path: string
     host: string

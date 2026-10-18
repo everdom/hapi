@@ -10,6 +10,7 @@ import { getEnvironmentInfo } from '@/ui/doctor';
 import { startHappyServer, toClaudeAllowedHapiMcpTools } from '@/claude/utils/startHappyServer';
 import { startHookServer } from '@/claude/utils/startHookServer';
 import { generateHookSettingsFile, cleanupHookSettingsFile, mergeClaudeSettingsFile } from '@/modules/common/hooks/generateHookSettings';
+import { materializeCcSwitchSettings } from '@/claude/utils/ccSwitchSettings';
 import { registerKillSessionHandler } from './registerKillSessionHandler';
 import type { Session } from './session';
 import { bootstrapExistingSession, bootstrapSession } from '@/agent/sessionFactory';
@@ -49,11 +50,26 @@ export interface StartOptions {
     claudeSettingsPath?: string
     claudeConfigId?: string
     claudeConfigName?: string
+    /** cc-switch provider id — materialized to a settings file before launch. */
+    claudeCcSwitchProviderId?: string
 }
 
 export async function runClaude(options: StartOptions = {}): Promise<void> {
     const workingDirectory = options.workingDirectory ?? getInvokedCwd();
     const startedBy = options.startedBy ?? 'terminal';
+
+    // cc-switch launch profile: materialize the provider's stored settings
+    // config into a real file before anything else, then fall through to the
+    // normal --settings merge path below. This keeps cc-switch the single
+    // source of truth (every spawn re-reads its database) without touching
+    // hapi's own profile persistence.
+    if (options.claudeCcSwitchProviderId && !options.claudeSettingsPath) {
+        const materializedPath = await materializeCcSwitchSettings(options.claudeCcSwitchProviderId);
+        if (!materializedPath) {
+            throw new Error(`Failed to materialize cc-switch provider "${options.claudeCcSwitchProviderId}". Is cc-switch installed and does it still contain this provider?`);
+        }
+        options.claudeSettingsPath = materializedPath;
+    }
 
     // Log environment info at startup
     logger.debugLargeJson('[START] HAPI process started', getEnvironmentInfo());
@@ -91,7 +107,8 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
                         profileId: options.claudeConfigId,
                         profileName: options.claudeConfigName,
                         settingsPath: options.claudeSettingsPath,
-                        args: options.claudeArgs
+                        args: options.claudeArgs,
+                        ccSwitchProviderId: options.claudeCcSwitchProviderId
                     }
                 }
                 : undefined

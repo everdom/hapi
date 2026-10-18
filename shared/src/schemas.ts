@@ -56,7 +56,14 @@ export const ClaudeConfigSchema = z.object({
     profileId: z.string().optional(),
     profileName: z.string().optional(),
     settingsPath: z.string().optional(),
-    args: z.array(z.string()).optional()
+    args: z.array(z.string()).optional(),
+    /**
+     * cc-switch launch profile: the CLI re-reads this provider's settings from
+     * cc-switch's own database at spawn time (cc-switch stays the source of
+     * truth). Mutually exclusive with `settingsPath` in practice; when both
+     * are present the explicit `settingsPath` wins.
+     */
+    ccSwitchProviderId: z.string().optional()
 })
 
 export type ClaudeConfig = z.infer<typeof ClaudeConfigSchema>

@@ -13,7 +13,8 @@ const OWNER_ONLY_ERROR = 'Hub settings are only available to the hub owner'
 function toHubSettings(settings: Settings): HubSettingsResponse {
     return {
         sessionSummaryContract: settings.sessionSummaryContract === true,
-        sessionSummaryInChat: settings.sessionSummaryInChat === true
+        sessionSummaryInChat: settings.sessionSummaryInChat === true,
+        ccSwitchDbPath: settings.ccSwitchDbPath ?? null
     }
 }
 
@@ -44,6 +45,10 @@ export function createHubSettingsRoutes(dataDir: string): Hono<WebAppEnv> {
             }
             if (parsed.data.sessionSummaryInChat !== undefined) {
                 settings.sessionSummaryInChat = parsed.data.sessionSummaryInChat
+            }
+            if (parsed.data.ccSwitchDbPath !== undefined) {
+                const trimmed = parsed.data.ccSwitchDbPath?.trim()
+                settings.ccSwitchDbPath = trimmed ? trimmed : undefined
             }
             return {
                 settings,

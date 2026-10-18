@@ -77,6 +77,7 @@ import {
     CLAUDE_CUSTOM_PROFILE_ID,
     createClaudeProfile,
     findMatchingClaudeProfile,
+    isCcSwitchProfileId,
     type ClaudeProfile,
     loadClaudeProfiles,
     profileToClaudeConfig,
@@ -1698,7 +1699,10 @@ export function NewSession(props: {
                 void pushClaudeProfiles(props.api, [...profiles, savedProfile])
                 return savedProfile
             }
-            let resolvedClaudeProfile = agent === 'claude' && claudeProfile?.id === CLAUDE_CUSTOM_PROFILE_ID
+            // cc-switch selections arrive as synthetic profiles from the
+            // selector; pass them through as-is (persistCustomClaudeProfile
+            // would wrongly write them into the saved profile list).
+            let resolvedClaudeProfile = agent === 'claude' && claudeProfile?.id === CLAUDE_CUSTOM_PROFILE_ID && !isCcSwitchProfileId(claudeProfile.id)
                 ? persistCustomClaudeProfile(claudeProfile)
                 : claudeProfile
             if (resolvedClaudeProfile && resolvedClaudeProfile.id !== claudeProfileId) {

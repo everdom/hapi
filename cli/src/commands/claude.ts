@@ -94,6 +94,12 @@ export const claudeCommand: CommandDefinition = {
                 options.claudeConfigId = args[++i]
             } else if (arg === '--hapi-claude-config-name') {
                 options.claudeConfigName = args[++i]
+            } else if (arg === '--hapi-claude-cc-switch-provider') {
+                const providerId = args[++i]
+                if (!providerId) {
+                    throw new Error('Missing --hapi-claude-cc-switch-provider value')
+                }
+                options.claudeCcSwitchProviderId = providerId
             } else if (arg === '--started-by') {
                 options.startedBy = args[++i] as 'runner' | 'terminal'
             } else if (arg === '--hapi-session-id') {

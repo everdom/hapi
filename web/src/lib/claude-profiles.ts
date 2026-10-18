@@ -9,6 +9,13 @@ const PROFILES_STORAGE_KEY = 'hapi:claudeProfiles'
 const MIGRATION_DONE_KEY = 'hapi:claudeProfiles.migrated'
 export const CLAUDE_CUSTOM_PROFILE_ID = 'custom'
 
+/** Prefix for selector option ids backed by a cc-switch provider. */
+export const CLAUDE_CC_SWITCH_PROFILE_PREFIX = 'cc-switch:'
+
+export function isCcSwitchProfileId(profileId: string): boolean {
+    return profileId.startsWith(CLAUDE_CC_SWITCH_PROFILE_PREFIX)
+}
+
 export type { ClaudeProfile }
 
 function makeId(): string {
@@ -159,8 +166,24 @@ export function findMatchingClaudeProfile(
     return profiles.find((profile) => normalizeSettingsPath(profile.settingsPath) === settingsPath) ?? null
 }
 
+/**
+ * Build the spawn-time claudeConfig. cc-switch selections (synthetic profiles
+ * with a `cc-switch:` id prefix) resolve to a `ccSwitchProviderId` instead of a
+ * settings path — the CLI materializes the settings file from the cc-switch db
+ * at launch, so no secret ever round-trips through the web UI.
+ */
 export function profileToClaudeConfig(profile: ClaudeProfile | null | undefined): ClaudeConfig | null {
     if (!profile) return null
+    const ccSwitchProviderId = isCcSwitchProfileId(profile.id)
+        ? profile.id.slice(CLAUDE_CC_SWITCH_PROFILE_PREFIX.length)
+        : null
+    if (ccSwitchProviderId) {
+        return {
+            profileId: profile.id,
+            profileName: profile.name,
+            ccSwitchProviderId
+        }
+    }
     if (!profile.settingsPath && profile.args.length === 0) return null
     return {
         profileId: profile.id,

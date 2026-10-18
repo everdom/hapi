@@ -273,8 +273,11 @@ export class ApiClient {
         return await this.request<{ profiles: ClaudeProfile[] }>('/api/claude-profiles')
     }
 
-    async saveClaudeProfiles(profiles: ClaudeProfile[]): Promise<{ profiles: ClaudeProfile[] }> {
-        return await this.request<{ profiles: ClaudeProfile[] }>('/api/claude-profiles', {
+    async getCcSwitchProviders(): Promise<{ providers: Array<{ id: string; name: string; isCurrent: boolean }> }> {
+        return await this.request<{ providers: Array<{ id: string; name: string; isCurrent: boolean }> }>('/api/cc-switch/claude-providers')
+    }
+
+    async saveClaudeProfiles(profiles: ClaudeProfile[]): Promise<{ profiles: ClaudeProfile[] }> {        return await this.request<{ profiles: ClaudeProfile[] }>('/api/claude-profiles', {
             method: 'PUT',
             body: JSON.stringify({ profiles })
         })

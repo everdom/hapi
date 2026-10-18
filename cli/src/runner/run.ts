@@ -2064,6 +2064,12 @@ export function buildCliArgs(
     if (options.claudeConfig.profileName) {
       args.push('--hapi-claude-config-name', options.claudeConfig.profileName);
     }
+    if (options.claudeConfig.ccSwitchProviderId) {
+      // cc-switch launch profile: the child hapi process re-reads cc-switch's
+      // own database at spawn time, so cc-switch stays the single source of
+      // truth (token changes in cc-switch apply to the next session).
+      args.push('--hapi-claude-cc-switch-provider', options.claudeConfig.ccSwitchProviderId);
+    }
     if (options.claudeConfig.settingsPath) {
       args.push('--settings', options.claudeConfig.settingsPath);
     }
