@@ -52,11 +52,6 @@ export interface Settings {
      */
     providerCredentials?: Partial<Record<string, string>>
     /**
-     * Named Claude launch profiles persisted from the web UI. Keyed by machineId,
-     * each profile captures a settings path + CLI args the user wants to launch
-     * Claude with. Read by `hub/src/web/routes/claudeProfiles.ts` and surfaced
-     * via the `ClaudeProfileSelector` web component.
-     */
     claudeProfiles?: Record<string, Array<{
         id: string
         name: string
@@ -65,6 +60,11 @@ export interface Settings {
         createdAt: number
         updatedAt: number
     }>>
+    /**
+     * Cap (seconds) on one ElevenLabs ConvAI conversation. Env
+     * ELEVENLABS_MAX_DURATION_SECONDS still wins when set at process start.
+     */
+    elevenLabsMaxDurationSeconds?: number
 }
 
 export function getSettingsFile(dataDir: string): string {
