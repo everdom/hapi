@@ -58,7 +58,7 @@ export function ClaudeProfileSelector(props: Props) {
     const [customArgsText, setCustomArgsText] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [syncWarning, setSyncWarning] = useState<string | null>(null)
-    const [activeTab, setActiveTab] = useState<ProfileTab>('profiles')
+    const [activeTab, setActiveTab] = useState<ProfileTab>('cc-switch')
     const isCustomSelected = props.selectedProfileId === CLAUDE_CUSTOM_PROFILE_ID
     // Keep the latest push result in sync even if the hub normalizes entries;
     // track mount state so a slow first fetch cannot overwrite newer edits.
@@ -227,6 +227,20 @@ export function ClaudeProfileSelector(props: Props) {
                 {t('newSession.claudeProfile')}
             </label>
             <div className="flex gap-1">
+                {/* cc-switch first (default choice); hidden entirely when no
+                    providers are detected. */}
+                {ccSwitchProviders.length > 0 ? (
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('cc-switch')}
+                        disabled={props.isDisabled}
+                        className={activeTab === 'cc-switch'
+                            ? 'flex-1 rounded-lg bg-[var(--app-button)] px-3 py-1.5 text-xs font-medium text-[var(--app-button-text)] transition-opacity hover:opacity-90 disabled:opacity-50'
+                            : 'flex-1 rounded-lg border border-[var(--app-divider)] px-3 py-1.5 text-xs font-medium text-[var(--app-hint)] transition-opacity hover:opacity-80 disabled:opacity-50'}
+                    >
+                        {t('newSession.claudeProfile.tab.ccSwitch')}
+                    </button>
+                ) : null}
                 <button
                     type="button"
                     onClick={() => setActiveTab('profiles')}
@@ -237,18 +251,24 @@ export function ClaudeProfileSelector(props: Props) {
                 >
                     {t('newSession.claudeProfile.tab.profiles')}
                 </button>
-                <button
-                    type="button"
-                    onClick={() => setActiveTab('cc-switch')}
-                    disabled={props.isDisabled || ccSwitchProviders.length === 0}
-                    className={activeTab === 'cc-switch'
-                        ? 'flex-1 rounded-lg bg-[var(--app-button)] px-3 py-1.5 text-xs font-medium text-[var(--app-button-text)] transition-opacity hover:opacity-90 disabled:opacity-50'
-                        : 'flex-1 rounded-lg border border-[var(--app-divider)] px-3 py-1.5 text-xs font-medium text-[var(--app-hint)] transition-opacity hover:opacity-80 disabled:opacity-50'}
-                >
-                    {t('newSession.claudeProfile.tab.ccSwitch')}
-                </button>
             </div>
-            {activeTab === 'profiles' ? (
+            {activeTab === 'cc-switch' && ccSwitchProviders.length > 0 ? (
+                <select
+                    value={props.selectedProfileId}
+                    onChange={(event) => props.onSelectedProfileIdChange(event.target.value)}
+                    disabled={props.isDisabled}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--app-divider)] bg-[var(--app-bg)] text-[var(--app-text)] focus:outline-none focus:ring-2 focus:ring-[var(--app-link)] disabled:opacity-50"
+                >
+                    {ccSwitchProviders.map((provider) => (
+                        <option
+                            key={provider.id}
+                            value={`${CLAUDE_CC_SWITCH_PROFILE_PREFIX}${provider.id}`}
+                        >
+                            {provider.name}{provider.isCurrent ? ` (${t('newSession.claudeProfile.ccSwitchCurrent')})` : ''}
+                        </option>
+                    ))}
+                </select>
+            ) : activeTab === 'profiles' || ccSwitchProviders.length === 0 ? (
                 <div className="flex gap-2">
                     <select
                         value={props.selectedProfileId}
@@ -283,27 +303,7 @@ export function ClaudeProfileSelector(props: Props) {
                         </button>
                     ) : null}
                 </div>
-            ) : ccSwitchProviders.length > 0 ? (
-                <select
-                    value={props.selectedProfileId}
-                    onChange={(event) => props.onSelectedProfileIdChange(event.target.value)}
-                    disabled={props.isDisabled}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--app-divider)] bg-[var(--app-bg)] text-[var(--app-text)] focus:outline-none focus:ring-2 focus:ring-[var(--app-link)] disabled:opacity-50"
-                >
-                    {ccSwitchProviders.map((provider) => (
-                        <option
-                            key={provider.id}
-                            value={`${CLAUDE_CC_SWITCH_PROFILE_PREFIX}${provider.id}`}
-                        >
-                            {provider.name}{provider.isCurrent ? ` (${t('newSession.claudeProfile.ccSwitchCurrent')})` : ''}
-                        </option>
-                    ))}
-                </select>
-            ) : (
-                <div className="rounded-lg border border-[var(--app-divider)] px-3 py-2 text-xs text-[var(--app-hint)]">
-                    {t('newSession.claudeProfile.ccSwitchEmpty')}
-                </div>
-            )}
+            ) : null}
             {selectedProfile && selectedProfile.id !== CLAUDE_CUSTOM_PROFILE_ID && !isCcSwitchProfileId(selectedProfile.id) ? (
                 <div className="text-xs text-[var(--app-hint)]">
                     {selectedProfile.settingsPath || selectedProfile.args.join(' ')}

@@ -68,14 +68,17 @@ export const ClaudeConfigPicker: React.FC<ClaudeConfigPickerProps> = ({
     const { stdout } = useStdout()
     const terminalWidth = stdout.columns || 80
     const width = Math.max(40, terminalWidth - 4)
-    const [tab, setTab] = useState<Tab>('profiles')
+    // cc-switch first: it's the more convenient daily choice. Fall back to
+    // profiles when no providers were detected.
+    const [tab, setTab] = useState<Tab>(ccSwitchProviders.length > 0 ? 'cc-switch' : 'profiles')
     const [query, setQuery] = useState('')
     const [index, setIndex] = useState(0)
 
+    // Tab order matches the web NewSession selector: cc-switch first.
     const tabs: Tab[] = useMemo(() => {
         const list: Tab[] = []
-        if (profiles.length > 0) list.push('profiles')
         if (ccSwitchProviders.length > 0) list.push('cc-switch')
+        if (profiles.length > 0) list.push('profiles')
         return list
     }, [profiles.length, ccSwitchProviders.length])
 
@@ -102,7 +105,6 @@ export const ClaudeConfigPicker: React.FC<ClaudeConfigPickerProps> = ({
 
     const selectedIndex = Math.min(index, Math.max(0, filtered.length - 1))
     const active = filtered[selectedIndex]
-    const activeTabLabel = tab === 'profiles' ? `Profiles (${entries.profiles.length})` : `cc-switch (${entries['cc-switch'].length})`
 
     useInput((input, key) => {
         if (key.ctrl && input === 'c') {
@@ -171,9 +173,15 @@ export const ClaudeConfigPicker: React.FC<ClaudeConfigPickerProps> = ({
                     </Box>
                 ))}
             </Box>
-            <Text color="gray">
-                {activeTabLabel} — Search: <Text color={query ? 'cyan' : 'gray'}>{query || 'type to filter'}</Text>
-            </Text>
+            {tab === 'cc-switch' ? (
+                <Text color="gray">
+                    cc-switch — Search: <Text color={query ? 'cyan' : 'gray'}>{query || 'type to filter'}</Text>
+                </Text>
+            ) : (
+                <Text color="gray">
+                    Profiles — Search: <Text color={query ? 'cyan' : 'gray'}>{query || 'type to filter'}</Text>
+                </Text>
+            )}
             <Box flexDirection="column" marginTop={1}>
                 {filtered.length === 0 ? (
                     <Text color="gray">No matching configurations</Text>
