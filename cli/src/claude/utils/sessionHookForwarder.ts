@@ -1,7 +1,7 @@
 import { request } from 'node:http';
 import { LocalPermissionDecisionSchema } from './localPermissionProtocol';
 
-export const SESSION_HOOK_FORWARD_TIMEOUT_MS = 1_000;
+export const SESSION_HOOK_FORWARD_TIMEOUT_MS = 5_000;
 
 function logError(message: string, error?: unknown): void {
     const detail = error instanceof Error ? error.message : (error ? String(error) : '');

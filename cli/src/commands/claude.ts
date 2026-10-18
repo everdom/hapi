@@ -11,6 +11,7 @@ import { initializeToken } from '@/ui/tokenInit'
 import { spawnHappyCLI } from '@/utils/spawnHappyCLI'
 import { maybeAutoStartServer } from '@/utils/autoStartServer'
 import { extractErrorInfo } from '@/utils/errorUtils'
+import { selectClaudeConfigInteractively } from '@/claude/utils/configSelector'
 import type { CommandDefinition } from './types'
 
 function stripEnclosingQuotes(value: string): string {
@@ -100,6 +101,8 @@ export const claudeCommand: CommandDefinition = {
                     throw new Error('Missing --hapi-claude-cc-switch-provider value')
                 }
                 options.claudeCcSwitchProviderId = providerId
+            } else if (arg === '--select' || arg === '--select-config') {
+                options.selectConfig = true
             } else if (arg === '--started-by') {
                 options.startedBy = args[++i] as 'runner' | 'terminal'
             } else if (arg === '--hapi-session-id') {
@@ -168,6 +171,23 @@ export const claudeCommand: CommandDefinition = {
         await initializeToken()
         await maybeAutoStartServer()
         await authAndSetupMachineIfNeeded()
+
+        // Interactive config picker: on by default for terminal launches
+        // (unless a config was already given explicitly, or this is a
+        // programmatic spawn from the runner — non-TTY stdin skips the menu).
+        const isRunnerSpawn = options.startedBy === 'runner'
+        const shouldShowConfigPicker = options.selectConfig || (!isRunnerSpawn && !options.claudeSettingsPath && !options.claudeCcSwitchProviderId)
+        if (shouldShowConfigPicker && process.stdin.isTTY) {
+            const selected = await selectClaudeConfigInteractively()
+            if (selected?.kind === 'profile' && selected.profile) {
+                options.claudeSettingsPath = selected.profile.settingsPath || undefined
+                if (selected.profile.args.length > 0) {
+                    options.claudeArgs = [...(options.claudeArgs || []), ...selected.profile.args]
+                }
+            } else if (selected?.kind === 'cc-switch' && selected.ccSwitchProviderId) {
+                options.claudeCcSwitchProviderId = selected.ccSwitchProviderId
+            }
+        }
 
         logger.debug('Ensuring hapi background service is running & matches our version...')
 

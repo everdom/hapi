@@ -52,6 +52,8 @@ export interface StartOptions {
     claudeConfigName?: string
     /** cc-switch provider id — materialized to a settings file before launch. */
     claudeCcSwitchProviderId?: string
+    /** Explicit `--select` flag: force the interactive config picker. */
+    selectConfig?: boolean
 }
 
 export async function runClaude(options: StartOptions = {}): Promise<void> {
