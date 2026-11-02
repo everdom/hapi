@@ -434,6 +434,17 @@ html:has(.chat-scroll-y) #root {
     .transient-scrollbar-fallback {
         display: block;
     }
+
+    /* The terminal draws its own scrollbar and hides it when idle, revealing
+     * it on hover or scroll. A touch device has no hover, so the scrollbar
+     * stays out of reach and the scrollback cannot be reached at all. Keep it
+     * visible while the terminal actually has scrollback to scroll to. */
+    .xterm[data-hapi-has-scrollback="true"] .xterm-scrollable-element > .scrollbar.vertical.invisible {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        z-index: 11;
+        transition: none !important;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
