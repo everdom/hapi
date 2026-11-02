@@ -4,6 +4,7 @@ export type SessionHeaderMetadataKey =
     | 'showLabels'
     | 'agent'
     | 'claudeProfile'
+    | 'project'
     | 'model'
     | 'reasoning'
     | 'fastMode'
@@ -19,6 +20,7 @@ export const DEFAULT_SESSION_HEADER_METADATA: SessionHeaderMetadataPreferences =
     showLabels: true,
     agent: true,
     claudeProfile: true,
+    project: true,
     model: true,
     reasoning: true,
     fastMode: true,

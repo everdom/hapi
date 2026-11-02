@@ -72,11 +72,15 @@ export function ClaudeProfileSelector(props: Props) {
         })
         // cc-switch providers are read-only and refreshed on every mount; a
         // failure (not installed / hub unreachable) just yields an empty group.
-        void props.api.getCcSwitchProviders().then((response) => {
-            if (mountedRef.current) {
-                setCcSwitchProviders(Array.isArray(response?.providers) ? response.providers : [])
-            }
-        }).catch(() => {})
+        // The call is optional so older hubs (and API stubs without the
+        // cc-switch endpoint) degrade to "no providers" instead of throwing.
+        if (typeof props.api.getCcSwitchProviders === 'function') {
+            void props.api.getCcSwitchProviders().then((response) => {
+                if (mountedRef.current) {
+                    setCcSwitchProviders(Array.isArray(response?.providers) ? response.providers : [])
+                }
+            }).catch(() => {})
+        }
         return () => {
             mountedRef.current = false
         }

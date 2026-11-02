@@ -1,4 +1,5 @@
 export type SessionHeaderSecondaryMetadataKey =
+    | 'project'
     | 'model'
     | 'reasoning'
     | 'machine'
@@ -11,6 +12,7 @@ export type SessionHeaderSecondaryMetadataKey =
 
 const MOBILE_SECONDARY_PRIORITY: ReadonlyArray<SessionHeaderSecondaryMetadataKey> = [
     'claudeProfile',
+    'project',
     'machine',
     'lastActive',
     'model',
