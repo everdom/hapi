@@ -377,10 +377,6 @@ export function isSidebarEmptySessionStub(session: SessionSummary): boolean {
 export function shouldShowSessionInSidebar(session: SessionSummary, selectedSessionId?: string | null): boolean {
     if (session.id === selectedSessionId) return true
     if (session.active || session.pinned || session.globalPinned) return true
-    // Archiving is a deliberate operator action — keep the row so archiving
-    // never makes a session vanish from the list. Only never-used stubs (no
-    // conversation, never archived) are noise worth hiding.
-    if (session.metadata?.lifecycleState === 'archived') return true
     return !isSidebarEmptySessionStub(session)
 }
 

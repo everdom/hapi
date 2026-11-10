@@ -153,9 +153,6 @@ export function SessionRowSummary(props: {
     // Unread is a semibold title plus accent time — no dot, so the presence
     // badge stays the row's only dot. The label stays for screen readers.
     const isUnread = attention?.kind === 'unread'
-    // Archived sessions stay in the list, so the row says so — an archived
-    // session must not look like a plain idle one.
-    const isArchived = s.metadata?.lifecycleState === 'archived'
     const requestKind = urgentAttention
         ? attention.kind as 'permission' | 'input'
         : s.active && (s.pendingRequestsCount ?? 0) > 0
@@ -216,14 +213,6 @@ export function SessionRowSummary(props: {
                                 {!urgentAttention && !inRunningSection ? (
                                     <span className="text-[11px] font-medium leading-none">{t('session.item.pending')}</span>
                                 ) : null}
-                            </span>
-                        ) : null}
-                        {isArchived ? (
-                            <span
-                                data-testid="session-archived-badge"
-                                className="shrink-0 rounded-full bg-[var(--app-secondary-bg)] px-1.5 py-0.5 text-[10px] leading-none text-[var(--app-hint)]"
-                            >
-                                {t('session.item.archived')}
                             </span>
                         ) : null}
                         {hasScheduleTooltip && nestedTooltips && scheduleId ? (

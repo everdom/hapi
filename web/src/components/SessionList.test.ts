@@ -368,20 +368,6 @@ describe('shouldShowSessionInSidebar', () => {
         expect(shouldShowSessionInSidebar({ ...stub, active: true })).toBe(true)
         expect(shouldShowSessionInSidebar({ ...stub, pinned: true })).toBe(true)
     })
-
-    it('keeps an archived session in the list even when it has no conversation', () => {
-        // Archiving is deliberate — the row must not vanish from the list.
-        const archived = makeSession({
-            id: 'archived',
-            metadata: { path: '/work/hapi', lifecycleState: 'archived' }
-        })
-        expect(shouldShowSessionInSidebar(archived)).toBe(true)
-    })
-
-    it('still hides a never-used session that was never archived', () => {
-        const stub = makeSession({ id: 'stub', metadata: { path: '/work/hapi' } })
-        expect(shouldShowSessionInSidebar(stub)).toBe(false)
-    })
 })
 
 describe('session list search helpers', () => {

@@ -213,7 +213,6 @@ export default {
   'session.item.worktree': '工作树',
   'session.item.claudeProfile': 'Claude 配置',
   'session.item.pending': '待处理',
-  'session.item.archived': '已归档',
   'session.item.thinking': '思考中',
   'session.item.running': '运行中',
   'session.item.active': '活跃',
