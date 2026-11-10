@@ -14,13 +14,13 @@ const SPAWN_SYNC_TIMEOUT_MS = 10_000;
  * there" (the caller then refuses to archive a session whose process already
  * exited).
  */
-const WINDOWS_CIM_SCAN_ATTEMPTS = 3;
+export const WINDOWS_CIM_SCAN_ATTEMPTS = 3;
 
 /** Pause between CIM retries so a busy WMI service gets a moment to recover. */
-const WINDOWS_CIM_SCAN_RETRY_DELAY_MS = 250;
+export const WINDOWS_CIM_SCAN_RETRY_DELAY_MS = 250;
 
 /** Synchronous sleep — the process helpers around it are synchronous by design. */
-function sleepSyncMs(ms: number): void {
+export function sleepSyncMs(ms: number): void {
   if (ms <= 0) return;
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -347,7 +347,9 @@ export function collectWindowsProcessTree(pid: number): number[] | 'scan_failed'
   // A transient CIM/WMI failure must not be read as "the tree is still
   // there": the caller fails closed on scan_failed and then refuses to
   // archive the session. Retry the read before giving up — the scan is a
-  // pure observation, so a retry can only add information.
+  // pure observation, so a retry can only add information. A well-formed
+  // answer that does not contain the root stays a failure: it is an anomaly,
+  // not proof that the process is gone.
   for (let attempt = 0; attempt < WINDOWS_CIM_SCAN_ATTEMPTS; attempt++) {
     if (attempt > 0) {
       sleepSyncMs(WINDOWS_CIM_SCAN_RETRY_DELAY_MS)
@@ -368,12 +370,6 @@ export function collectWindowsProcessTree(pid: number): number[] | 'scan_failed'
     const parsed = parseWindowsProcessTreeStdout((result.stdout ?? '').toString(), n)
     if (parsed !== 'scan_failed') {
       return parsed
-    }
-    // A well-formed answer that does not contain the root means the root is
-    // gone — the tree is empty, which is stop proof, not a scan failure.
-    const stdout = (result.stdout ?? '').toString().trim()
-    if (stdout.startsWith('OK:')) {
-      return []
     }
   }
   return 'scan_failed'

@@ -1105,11 +1105,13 @@ describe('collectWindowsProcessTree retries a transient CIM failure', () => {
         expect(spawnSyncMock.mock.calls.length).toBeGreaterThanOrEqual(2)
     })
 
-    it('treats a well-formed answer without the root as an empty tree, not a scan failure', async () => {
+    it('fails closed on a well-formed answer without the root', async () => {
         const { collectWindowsProcessTree } = await import('./process')
         spawnSyncMock.mockReturnValue(completed('OK:4000,3000'))
 
-        expect(collectWindowsProcessTree(1234)).toEqual([])
-        expect(spawnSyncMock).toHaveBeenCalledTimes(1)
+        // An answer without the root is an anomaly, not proof that the process
+        // is gone — the caller must keep failing closed.
+        expect(collectWindowsProcessTree(1234)).toBe('scan_failed')
+        expect(spawnSyncMock.mock.calls.length).toBeGreaterThanOrEqual(2)
     })
 })

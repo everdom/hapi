@@ -2172,15 +2172,7 @@ export class SyncEngine {
                 }
             }
             if (status === 'still_alive' || status === 'unknown') {
-                // The CLI archives itself when it exits cleanly. If that already
-                // happened while we were stopping it, the goal of this archive
-                // is met — the process is gone and the row is archived. Only a
-                // hub-authored archive leaves the process running, so that one
-                // still has to fail closed.
-                const archivedByCli = this.sessionCache.getSession(sessionId)?.metadata
-                if (archivedByCli?.lifecycleState !== 'archived' || archivedByCli.archivedBy === 'hub') {
-                    throw new Error('Session process is still running and could not be stopped')
-                }
+                throw new Error('Session process is still running and could not be stopped')
             }
         } else if (machineId && !runnerSpawned) {
             // Terminal / non-runner sessions: KillSession is the primary stop.

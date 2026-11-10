@@ -386,12 +386,12 @@ describe('SyncEngine.archiveSession runner reaping (#1910)', () => {
         expect(cache().getSession(sessionId)?.active).toBe(true)
     })
 
-    it('archives when the CLI already archived the session itself', async () => {
-        // The CLI archives itself on a clean exit. When that happens while the
-        // hub is stopping it, the runner can no longer confirm the exit (the
-        // session id is gone, the CIM process scan may fail) — but the archive
-        // goal is met: the process is gone and the row says archived.
-        const sessionId = insertActiveSession('sess-cli-archived', 'machine-x')
+    it('does NOT archive on a CLI self-archive without a confirmed stop', async () => {
+        // The CLI archives itself on its way out, but that says nothing about
+        // whether the process is gone yet — the stop still has to be confirmed
+        // by the runner. Archiving on the metadata alone would let a live
+        // process outlive its session row.
+        const sessionId = insertActiveSession('sess-cli-archived-unconfirmed', 'machine-x')
         setKillSessionMissingTarget()
         ;(engine as unknown as { rpcGateway: { stopRunnerSession: unknown } }).rpcGateway.stopRunnerSession =
             async () => 'unknown'
@@ -400,34 +400,6 @@ describe('SyncEngine.archiveSession runner reaping (#1910)', () => {
         const written = store.sessions.updateSessionMetadata(
             sessionId,
             { ...session.metadata!, lifecycleState: 'archived', archivedBy: 'cli' },
-            session.metadataVersion,
-            NAMESPACE
-        )
-        expect(written.result).toBe('success')
-        cache().refreshSession(sessionId)
-
-        await engine.archiveSession(sessionId)
-
-        const archived = cache().getSession(sessionId)
-        expect(archived?.active).toBe(false)
-        expect(archived?.metadata?.lifecycleState).toBe('archived')
-        // The CLI authored the archive — the hub must not overwrite it.
-        expect(archived?.metadata?.archivedBy).toBe('cli')
-    })
-
-    it('still refuses when a hub-authored archive left the process running', async () => {
-        // A hub-authored archive says nothing about the process: the row is
-        // archived but the CLI may still be running, so the stop must be
-        // confirmed before the archive request succeeds.
-        const sessionId = insertActiveSession('sess-hub-archived-still-alive', 'machine-x')
-        setKillSessionMissingTarget()
-        ;(engine as unknown as { rpcGateway: { stopRunnerSession: unknown } }).rpcGateway.stopRunnerSession =
-            async () => 'still_alive'
-
-        const session = cache().getSession(sessionId)!
-        const written = store.sessions.updateSessionMetadata(
-            sessionId,
-            { ...session.metadata!, lifecycleState: 'archived', archivedBy: 'hub' },
             session.metadataVersion,
             NAMESPACE
         )

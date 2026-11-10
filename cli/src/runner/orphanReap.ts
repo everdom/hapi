@@ -15,7 +15,14 @@
  */
 
 import spawn from 'cross-spawn'
-import { getProcessStartMarker, isProcessAlive, windowsProcessListCimCommand } from '@/utils/process'
+import {
+    getProcessStartMarker,
+    isProcessAlive,
+    sleepSyncMs,
+    windowsProcessListCimCommand,
+    WINDOWS_CIM_SCAN_ATTEMPTS,
+    WINDOWS_CIM_SCAN_RETRY_DELAY_MS,
+} from '@/utils/process'
 
 export type ProcessSnapshot = {
     pid: number
@@ -172,26 +179,40 @@ export function listPosixProcessesWithStartMarker(): ProcessSnapshot[] {
  */
 export {
     WINDOWS_CIM_CREATION_DATE_MARKER_EXPR,
+    WINDOWS_CIM_SCAN_ATTEMPTS,
+    WINDOWS_CIM_SCAN_RETRY_DELAY_MS,
+    sleepSyncMs,
     windowsProcessListCimCommand,
     windowsProcessMarkerCimCommand,
 } from '@/utils/process'
 
 /** Win32 process list with CommandLine + CreationDate for argv orphan matching. */
 export function listWindowsProcessesWithCommandLine(): ProcessSnapshot[] {
-    const result = spawn.sync(
-        'powershell',
-        [
-            '-NoProfile',
-            '-NonInteractive',
-            '-Command',
-            windowsProcessListCimCommand(),
-        ],
-        { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: 10_000 }
-    )
-    if (result.error || result.status !== 0) {
-        throw result.error ?? new Error(`powershell Win32_Process exit ${result.status}`)
+    // A transient WMI failure must not be read as "the listing is complete":
+    // the caller treats a throw as "a live process may still exist" and
+    // refuses to archive. Retry the read before giving up.
+    let lastError: unknown = null
+    for (let attempt = 0; attempt < WINDOWS_CIM_SCAN_ATTEMPTS; attempt++) {
+        if (attempt > 0) {
+            sleepSyncMs(WINDOWS_CIM_SCAN_RETRY_DELAY_MS)
+        }
+        const result = spawn.sync(
+            'powershell',
+            [
+                '-NoProfile',
+                '-NonInteractive',
+                '-Command',
+                windowsProcessListCimCommand(),
+            ],
+            { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: 10_000 }
+        )
+        if (result.error || result.status !== 0) {
+            lastError = result.error ?? new Error(`powershell Win32_Process exit ${result.status}`)
+            continue
+        }
+        return parseWindowsProcessSnapshot((result.stdout ?? '').toString())
     }
-    return parseWindowsProcessSnapshot((result.stdout ?? '').toString())
+    throw lastError ?? new Error('powershell Win32_Process unavailable')
 }
 
 /** Reject incomplete/invalid listings before absence can prove a PID exited. */
