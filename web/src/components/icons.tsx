@@ -120,6 +120,18 @@ export function InfoIcon(props: IconProps) {
     )
 }
 
+export function ArchiveIcon(props: IconProps) {
+    return createIcon(
+        <>
+            <rect width="20" height="5" x="2" y="3" rx="1" />
+            <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+            <path d="M10 12h4" />
+        </>,
+        props,
+        2
+    )
+}
+
 export function ForkIcon(props: IconProps) {
     return createIcon(
         <>
@@ -145,6 +157,17 @@ export function RewindIcon(props: IconProps) {
     )
 }
 
+export function RefreshIcon(props: IconProps) {
+    return createIcon(
+        <>
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
+        </>,
+        props,
+        2
+    )
+}
+
 /** Composer schedule-send clock — circle + hands (matches ComposerButtons). */
 export function ScheduleIcon(props: IconProps) {
     return createIcon(
@@ -154,6 +177,21 @@ export function ScheduleIcon(props: IconProps) {
         </>,
         props,
         2
+    )
+}
+
+/**
+ * Power/standby mark — a stopped or archived session's presence badge. Drawn
+ * heavier than the other icons (stroke 3.6 of 24) because it renders at 10px.
+ */
+export function StoppedBadgeIcon(props: IconProps) {
+    return createIcon(
+        <>
+            <path d="M7.2 6.2a8.6 8.6 0 1 0 9.6 0" />
+            <path d="M12 2v8.4" />
+        </>,
+        props,
+        3.6
     )
 }
 
