@@ -188,6 +188,7 @@ export default {
   'session.modelChange.pendingTooltip': 'Модель изменится, когда текущая задача завершится.',
   'session.item.worktree': 'рабочее дерево',
   'session.item.pending': 'ожидание',
+  'session.item.archived': 'в архиве',
   'session.item.thinking': 'размышление',
   'session.item.running': 'Выполняется',
   'session.item.active': 'Активна',

@@ -213,6 +213,7 @@ export default {
   'session.item.worktree': 'worktree',
   'session.item.claudeProfile': 'Claude profile',
   'session.item.pending': 'pending',
+  'session.item.archived': 'archived',
   'session.item.thinking': 'thinking',
   'session.item.running': 'Running',
   'session.item.active': 'Active',
