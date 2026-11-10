@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { readClaudeSettingsModels, type ClaudeSettingsModels } from '@hapi/protocol';
 import { logger } from '@/ui/logger';
 
 export interface ClaudeSettings {
@@ -60,8 +61,25 @@ export function resolveClaudeLaunchModel(opts: { model?: string | null; cwd: str
 }
 
 /**
+ * The model(s) a Claude launch config pins a session to, read from the
+ * settings file itself.
+ *
+ * A launch config (an hapi profile or a cc-switch provider materialized to a
+ * file) selects the model in its `env` block. Reading it here is what keeps
+ * the session's model — and the model the web shows and offers — the one the
+ * agent actually runs, instead of the machine's current Claude catalog.
+ */
+export function readClaudeSettingsFileModels(settingsPath: string): ClaudeSettingsModels {
+  try {
+    return readClaudeSettingsModels(JSON.parse(readFileSync(settingsPath, 'utf-8')));
+  } catch {
+    return { model: null, models: [] };
+  }
+}
+
+/**
  * Read Claude's settings.json file from the default location
- * 
+ *
  * @returns Claude settings object or null if file doesn't exist or can't be read
  */
 export function readClaudeSettings(): ClaudeSettings | null {

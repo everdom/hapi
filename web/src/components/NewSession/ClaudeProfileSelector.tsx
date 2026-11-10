@@ -124,7 +124,8 @@ export function ClaudeProfileSelector(props: Props) {
                 settingsPath: '',
                 args: [],
                 createdAt: 0,
-                updatedAt: 0
+                updatedAt: 0,
+                models: selectedCcSwitchProvider.models
             }
         }
         return profiles.find((profile) => profile.id === props.selectedProfileId) ?? null

@@ -11,6 +11,7 @@ import { startHappyServer, toClaudeAllowedHapiMcpTools } from '@/claude/utils/st
 import { startHookServer } from '@/claude/utils/startHookServer';
 import { generateHookSettingsFile, cleanupHookSettingsFile, mergeClaudeSettingsFile } from '@/modules/common/hooks/generateHookSettings';
 import { materializeCcSwitchSettings } from '@/claude/utils/ccSwitchSettings';
+import { readClaudeSettingsFileModels } from '@/claude/utils/claudeSettings';
 import { forwardClaudeAutoCompactionStart } from './utils/autoCompactionHook';
 import { registerKillSessionHandler } from './registerKillSessionHandler';
 import type { Session } from './session';
@@ -89,6 +90,17 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
     const initialState: AgentState = {};
     const initialModel = normalizeClaudeSessionModel(options.model);
     const initialEffort = normalizeClaudeSessionEffort(options.effort);
+
+    // A launch config (hapi profile or cc-switch provider) pins the model in
+    // its settings file. Reading it here keeps the session's model — and with
+    // it the model the web shows and offers — the one the agent actually runs,
+    // instead of the machine's current Claude catalog (which belongs to
+    // whichever provider the machine happens to use).
+    const launchConfigModels = options.claudeSettingsPath
+        ? readClaudeSettingsFileModels(options.claudeSettingsPath)
+        : null;
+    const sessionModel = initialModel ?? launchConfigModels?.model ?? null;
+
     const bootstrap = options.existingSessionId
         ? await bootstrapExistingSession({
             sessionId: options.existingSessionId,
@@ -101,7 +113,7 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
             startedBy,
             workingDirectory,
             agentState: initialState,
-            model: initialModel ?? undefined,
+            model: sessionModel ?? undefined,
             effort: initialEffort ?? undefined,
             reservedSessionId: options.reservedSessionId,
             metadataOverrides: options.claudeSettingsPath || options.claudeArgs?.length || options.claudeConfigId || options.claudeConfigName
@@ -111,7 +123,9 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
                         profileName: options.claudeConfigName,
                         settingsPath: options.claudeSettingsPath,
                         args: options.claudeArgs,
-                        ccSwitchProviderId: options.claudeCcSwitchProviderId
+                        ccSwitchProviderId: options.claudeCcSwitchProviderId,
+                        model: launchConfigModels?.model ?? undefined,
+                        models: launchConfigModels?.models.length ? launchConfigModels.models : undefined
                     }
                 }
                 : undefined
@@ -387,7 +401,11 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
 
     // Forward messages to the queue
     let currentPermissionMode: PermissionMode = options.permissionMode ?? 'default';
-    let currentModel: SessionModel = initialModel;
+    // The runtime model is the session's model: for a launch config that is
+    // the model its settings file pins, which is what the agent actually
+    // runs. Reporting it also keeps the keepalive from clearing the model the
+    // session was created with.
+    let currentModel: SessionModel = sessionModel;
     let currentEffort: SessionEffort = initialEffort;
     let currentFallbackModel: string | undefined = undefined; // Track current fallback model
     let currentCustomSystemPrompt: string | undefined = undefined; // Track current custom system prompt

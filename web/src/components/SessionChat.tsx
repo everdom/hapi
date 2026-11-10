@@ -63,8 +63,8 @@ import {
 } from '@/lib/messageDelivery'
 import type { MessageDeliveryMode } from '@hapi/protocol'
 import { isSteeringSupportedForSession } from '@hapi/protocol'
-import { AGY_MODEL_LABELS, AGY_MODEL_PRESETS, getAgyModelChoices, splitAgyModelSelection, getClaudeEffortLevelsForModel, resolveClaudeEffortForModel } from '@hapi/protocol'
-import { getClaudeCatalogOptions } from '@/components/AssistantChat/modelOptions'
+import { AGY_MODEL_LABELS, AGY_MODEL_PRESETS, getAgyModelChoices, splitAgyModelSelection, getClaudeEffortLevelsForModel, getClaudeModelLabel, resolveClaudeEffortForModel } from '@hapi/protocol'
+import { getClaudeCatalogOptions, getClaudeSessionModelOptions } from '@/components/AssistantChat/modelOptions'
 import { createAttachmentAdapter } from '@/lib/attachmentAdapter'
 import { rewindMessageWindow, type OlderLoadOutcome } from '@/lib/message-window-store'
 import { ShareSeedConsumer } from '@/components/ShareSeedConsumer'
@@ -1230,11 +1230,20 @@ function SessionChatInner(props: SessionChatProps) {
     })
     // Until the catalog arrives (or on a runner without discovery) this stays
     // undefined and the composer keeps its built-in Claude presets.
-    const claudeModelOptions = useMemo(() => (
-        agentFlavor === 'claude' && claudeModelsState.availableModels.length > 0
-            ? getClaudeCatalogOptions(claudeModelsState.availableModels, t('misc.otherModels'))
-            : undefined
-    ), [agentFlavor, claudeModelsState.availableModels, t])
+    //
+    // A launch config owns the session's model: the models its settings file
+    // exposes replace the machine's catalog, which belongs to whichever
+    // provider the machine currently uses — a different one than the profile
+    // or provider this session runs with.
+    const claudeConfigModels = props.session.metadata?.claudeConfig?.models
+    const claudeModelOptions = useMemo(() => {
+        if (agentFlavor !== 'claude') return undefined
+        return getClaudeSessionModelOptions({
+            configModels: claudeConfigModels,
+            catalog: claudeModelsState.availableModels,
+            otherModelsLabel: t('misc.otherModels')
+        })
+    }, [agentFlavor, claudeConfigModels, claudeModelsState.availableModels, t])
     // Levels the current Claude model accepts; undefined when unknown (no
     // catalog, or a model it does not list), which keeps every level.
     const claudeEffortOptions = useMemo(() => (

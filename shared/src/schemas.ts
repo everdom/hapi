@@ -64,7 +64,20 @@ export const ClaudeConfigSchema = z.object({
      * truth). Mutually exclusive with `settingsPath` in practice; when both
      * are present the explicit `settingsPath` wins.
      */
-    ccSwitchProviderId: z.string().optional()
+    ccSwitchProviderId: z.string().optional(),
+    /**
+     * The model the launch config pins the session to, read from the settings
+     * file's `env.ANTHROPIC_MODEL` (or its `model` key). Without it the
+     * session's model stays unset and the web shows "Default" even though the
+     * agent runs the configured model.
+     */
+    model: z.string().optional(),
+    /**
+     * Every model the launch config exposes. The machine's Claude catalog
+     * belongs to the provider the machine currently uses, which is a different
+     * one than the profile or provider picked for this session.
+     */
+    models: z.array(z.string()).optional()
 })
 
 export type ClaudeConfig = z.infer<typeof ClaudeConfigSchema>

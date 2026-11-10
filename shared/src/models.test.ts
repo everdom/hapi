@@ -9,6 +9,7 @@ import {
     getClaudeModelChoices,
     getClaudeModelLabel,
     isClaudeModelPreset,
+    readClaudeSettingsModels,
     resolveClaudeEffortForModel,
 } from './models'
 import type { ClaudeModelSummary } from './apiTypes'
@@ -161,5 +162,67 @@ describe('resolveClaudeEffortForModel', () => {
 
     test('leaves an unset effort unset', () => {
         expect(resolveClaudeEffortForModel(null, 'haiku', SUBSCRIPTION_CATALOG)).toBeNull()
+    })
+})
+
+describe('readClaudeSettingsModels', () => {
+    test('reads the model a cc-switch style config pins', () => {
+        const { model, models } = readClaudeSettingsModels({
+            env: {
+                ANTHROPIC_MODEL: 'qwen3.8-flash-next-iq3_s',
+                ANTHROPIC_DEFAULT_SONNET_MODEL: 'qwen3.8-flash-next-iq3_s',
+                ANTHROPIC_AUTH_TOKEN: 'secret-token',
+            },
+        })
+
+        expect(model).toBe('qwen3.8-flash-next-iq3_s')
+        expect(models).toEqual(['qwen3.8-flash-next-iq3_s'])
+    })
+
+    test('collects every alias the config exposes, default first', () => {
+        const { model, models } = readClaudeSettingsModels({
+            env: {
+                ANTHROPIC_MODEL: 'model-default',
+                ANTHROPIC_DEFAULT_OPUS_MODEL: 'model-opus',
+                ANTHROPIC_DEFAULT_SONNET_MODEL: 'model-sonnet',
+                ANTHROPIC_DEFAULT_HAIKU_MODEL: 'model-default',
+                ANTHROPIC_DEFAULT_FABLE_MODEL: 'model-fable',
+            },
+        })
+
+        expect(model).toBe('model-default')
+        expect(models).toEqual(['model-default', 'model-opus', 'model-sonnet', 'model-fable'])
+    })
+
+    test('falls back to the settings model key when the env block has none', () => {
+        const { model, models } = readClaudeSettingsModels({ model: 'claude-opus-4-5' })
+
+        expect(model).toBe('claude-opus-4-5')
+        expect(models).toEqual(['claude-opus-4-5'])
+    })
+
+    test('prefers the env block over the settings model key', () => {
+        const { model } = readClaudeSettingsModels({
+            model: 'from-settings',
+            env: { ANTHROPIC_MODEL: 'from-env' },
+        })
+
+        expect(model).toBe('from-env')
+    })
+
+    test('reports nothing for a config without a model', () => {
+        expect(readClaudeSettingsModels({ env: { ANTHROPIC_BASE_URL: 'https://example.test' } }))
+            .toEqual({ model: null, models: [] })
+        expect(readClaudeSettingsModels(null)).toEqual({ model: null, models: [] })
+        expect(readClaudeSettingsModels('nonsense')).toEqual({ model: null, models: [] })
+    })
+
+    test('ignores blank model values', () => {
+        const { model, models } = readClaudeSettingsModels({
+            env: { ANTHROPIC_MODEL: '   ', ANTHROPIC_DEFAULT_SONNET_MODEL: 'model-sonnet' },
+        })
+
+        expect(model).toBeNull()
+        expect(models).toEqual(['model-sonnet'])
     })
 })

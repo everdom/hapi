@@ -1,11 +1,16 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
+import { readClaudeSettingsModels } from '@hapi/protocol'
 
 export interface CcSwitchProvider {
     id: string
     name: string
     isCurrent: boolean
+    /** The model this provider's config pins a session to. */
+    model: string | null
+    /** Every model this provider's config exposes. */
+    models: string[]
 }
 
 /**
@@ -24,10 +29,15 @@ export function resolveCcSwitchDbPath(configuredPath?: string): string {
 
 /**
  * Read the Claude providers registered in cc-switch. cc-switch stores full
- * settings.json contents per provider in its `providers` table — we only ever
- * surface `id`/`name`/`isCurrent` so provider tokens never leave the hub
- * process; the actual config is materialized to a file at spawn time by the
- * CLI side (`cli/src/claude/utils/ccSwitchSettings.ts`).
+ * settings.json contents per provider in its `providers` table — only the
+ * provider's id, name and the model names its config selects ever leave the
+ * hub process, so provider tokens stay here; the actual config is
+ * materialized to a file at spawn time by the CLI side
+ * (`cli/src/claude/utils/ccSwitchSettings.ts`).
+ *
+ * The models matter to the web: the machine's Claude catalog belongs to
+ * whichever provider the machine currently uses, so without them a picker
+ * would offer another provider's models for the provider picked here.
  *
  * Returns an empty list (not an error) when the database does not exist —
  * cc-switch is optional. Read errors also degrade to empty so the selector
@@ -49,20 +59,37 @@ export function listCcSwitchClaudeProviders(configuredPath?: string): CcSwitchPr
         const db = new Database(dbPath, { readonly: true })
         try {
             const rows = db
-                .query<{ id: string; name: string; is_current: number }>(
-                    "SELECT id, name, is_current FROM providers WHERE app_type = 'claude' ORDER BY sort_index, created_at"
+                .query<{ id: string; name: string; is_current: number; settings_config: string | null }>(
+                    "SELECT id, name, is_current, settings_config FROM providers WHERE app_type = 'claude' ORDER BY sort_index, created_at"
                 )
                 .all()
-            return rows.map((row) => ({
-                id: row.id,
-                name: row.name,
-                isCurrent: row.is_current === 1
-            }))
+            return rows.map((row) => {
+                const { model, models } = readClaudeSettingsModels(parseSettingsConfig(row.settings_config))
+                return {
+                    id: row.id,
+                    name: row.name,
+                    isCurrent: row.is_current === 1,
+                    model,
+                    models
+                }
+            })
         } finally {
             db.close()
         }
     } catch {
         return []
+    }
+}
+
+/** The provider's stored settings config, or null when it is missing/unparsable. */
+function parseSettingsConfig(settingsConfig: string | null): unknown {
+    if (!settingsConfig) {
+        return null
+    }
+    try {
+        return JSON.parse(settingsConfig) as unknown
+    } catch {
+        return null
     }
 }
 

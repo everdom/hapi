@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { getClaudeLaunchModelOptions, getModelOptionsForFlavor, getNextModelForFlavor } from './modelOptions'
+import {
+    getClaudeLaunchCatalog,
+    getClaudeLaunchModelOptions,
+    getClaudeSessionModelOptions,
+    getModelOptionsForFlavor,
+    getNextModelForFlavor
+} from './modelOptions'
 
 describe('getModelOptionsForFlavor', () => {
     it('never offers the unsupported default reset in an active AGY session', () => {
@@ -499,5 +505,65 @@ describe('getModelOptionsForFlavor — pi normalize filter', () => {
             { value: null, label: 'Default' },
             { value: 'custom-model', label: 'custom-model' }
         ])
+    })
+})
+
+describe('getClaudeSessionModelOptions', () => {
+    const machineCatalog = [
+        { value: 'deepseek-v4.1-flash', displayName: 'DeepSeek V4.1 Flash' },
+        { value: 'deepseek-v4.1-flash[1M]', displayName: 'DeepSeek V4.1 Flash 1M' }
+    ]
+
+    it('offers the launch config models instead of the machine catalog', () => {
+        const options = getClaudeSessionModelOptions({
+            configModels: ['qwen3.8-flash-next-iq3_s'],
+            catalog: machineCatalog,
+            otherModelsLabel: 'Other models'
+        })
+
+        expect(options).toEqual([{ value: 'qwen3.8-flash-next-iq3_s', label: 'qwen3.8-flash-next-iq3_s' }])
+        expect(options?.some((option) => option.value?.includes('deepseek'))).toBe(false)
+    })
+
+    it('falls back to the machine catalog when the config exposes no model', () => {
+        const options = getClaudeSessionModelOptions({
+            configModels: [],
+            catalog: machineCatalog,
+            otherModelsLabel: 'Other models'
+        })
+
+        expect(options?.map((option) => option.value)).toEqual(['deepseek-v4.1-flash', 'deepseek-v4.1-flash[1M]'])
+    })
+
+    it('keeps a known Claude label for a config model', () => {
+        const options = getClaudeSessionModelOptions({
+            configModels: ['opus'],
+            catalog: [],
+            otherModelsLabel: 'Other models'
+        })
+
+        expect(options).toEqual([{ value: 'opus', label: 'Opus' }])
+    })
+
+    it('offers nothing without a config and without a catalog', () => {
+        expect(getClaudeSessionModelOptions({ configModels: null, catalog: [], otherModelsLabel: 'Other models' }))
+            .toBeUndefined()
+    })
+})
+
+describe('getClaudeLaunchCatalog', () => {
+    it('prefers the launch config models over the machine catalog', () => {
+        const catalog = getClaudeLaunchCatalog(['glm-5.3-flash'], [
+            { value: 'deepseek-v4.1-flash' }
+        ])
+
+        expect(catalog).toEqual([{ value: 'glm-5.3-flash' }])
+    })
+
+    it('keeps the machine catalog when the config has no models', () => {
+        const machineCatalog = [{ value: 'deepseek-v4.1-flash' }]
+
+        expect(getClaudeLaunchCatalog([], machineCatalog)).toBe(machineCatalog)
+        expect(getClaudeLaunchCatalog(null, machineCatalog)).toBe(machineCatalog)
     })
 })

@@ -101,6 +101,12 @@ export type ClaudeProfile = {
     args: string[]
     createdAt: number
     updatedAt: number
+    /**
+     * Models the launch config exposes. Only a cc-switch provider carries
+     * them (the hub knows its config); a saved profile points at a file the
+     * browser cannot read, so its models stay unknown until the session runs.
+     */
+    models?: string[]
 }
 
 /** A Claude provider listed from the local cc-switch database (no secrets). */
@@ -108,6 +114,10 @@ export type CcSwitchProvider = {
     id: string
     name: string
     isCurrent: boolean
+    /** The model this provider's config pins a session to. */
+    model: string | null
+    /** Every model this provider's config exposes. */
+    models: string[]
 }
 
 export type SessionMetadataSummary = {

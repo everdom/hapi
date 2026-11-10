@@ -70,6 +70,68 @@ export function getClaudeModelLabel(model: string): string | null {
 }
 
 /**
+ * The model a Claude launch config pins a session to, plus every model it
+ * exposes.
+ *
+ * A Claude settings file selects the model through the `env` block Claude Code
+ * reads: `ANTHROPIC_MODEL` is the session default and the
+ * `ANTHROPIC_DEFAULT_<FAMILY>_MODEL` entries map the family aliases onto
+ * concrete models. cc-switch stores exactly this shape, so the same reading
+ * covers hapi profiles and cc-switch providers.
+ */
+export type ClaudeSettingsModels = {
+    /** The model the config pins the session to. */
+    model: string | null
+    /** Every model the config exposes, the session default first. */
+    models: string[]
+}
+
+const CLAUDE_MODEL_ALIAS_ENV_KEYS = [
+    'ANTHROPIC_DEFAULT_OPUS_MODEL',
+    'ANTHROPIC_DEFAULT_SONNET_MODEL',
+    'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+    'ANTHROPIC_DEFAULT_FABLE_MODEL'
+] as const
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null
+}
+
+/**
+ * Reads the model(s) out of a Claude settings-shaped object.
+ *
+ * Accepts the parsed settings JSON, so the hub (which has a cc-switch provider's
+ * `settings_config` in its database) and the CLI (which has the materialized
+ * settings file) share one reading.
+ */
+export function readClaudeSettingsModels(settings: unknown): ClaudeSettingsModels {
+    const parsed = asRecord(settings)
+    if (!parsed) {
+        return { model: null, models: [] }
+    }
+    const env = asRecord(parsed.env) ?? {}
+    const readEnv = (key: string): string | undefined => {
+        const value = env[key]
+        return typeof value === 'string' && value.trim() ? value.trim() : undefined
+    }
+    const topLevelModel = typeof parsed.model === 'string' && parsed.model.trim()
+        ? parsed.model.trim()
+        : undefined
+    // Claude Code's own precedence: the env block wins over the settings' `model`.
+    const model = readEnv('ANTHROPIC_MODEL') ?? topLevelModel ?? null
+
+    const models: string[] = []
+    for (const value of [model ?? undefined, ...CLAUDE_MODEL_ALIAS_ENV_KEYS.map(readEnv)]) {
+        if (value && !models.includes(value)) {
+            models.push(value)
+        }
+    }
+    return { model, models }
+}
+
+/**
  * A Claude model the user can pick.
  *
  * `value` is stored on the session and passed to `claude --model` unchanged.

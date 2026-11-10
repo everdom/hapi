@@ -105,6 +105,48 @@ export function getClaudeCatalogOptions(catalog: readonly ClaudeModelSummary[], 
     ))
 }
 
+/**
+ * Model options for a Claude session.
+ *
+ * A launch config owns the session's model: the models its settings file
+ * exposes replace the machine's catalog, which belongs to whichever provider
+ * the machine currently uses — a different one than the profile or provider
+ * this session runs with. Without this the picker offered another provider's
+ * models while the agent ran the configured one.
+ */
+export function getClaudeSessionModelOptions(args: {
+    /** Models the session's launch config exposes. */
+    configModels?: readonly string[] | null
+    /** The machine's Claude catalog. */
+    catalog: readonly ClaudeModelSummary[]
+    otherModelsLabel: string
+}): ModelOption[] | undefined {
+    if (args.configModels && args.configModels.length > 0) {
+        return args.configModels.map((value) => ({
+            value,
+            label: getClaudeModelLabel(value) ?? value
+        }))
+    }
+    if (args.catalog.length > 0) {
+        return getClaudeCatalogOptions(args.catalog, args.otherModelsLabel)
+    }
+    return undefined
+}
+
+/**
+ * The catalog a Claude launch form should offer: the selected launch config's
+ * models when it has any, the machine's catalog otherwise.
+ */
+export function getClaudeLaunchCatalog(
+    configModels: readonly string[] | null | undefined,
+    catalog: readonly ClaudeModelSummary[]
+): readonly ClaudeModelSummary[] {
+    if (configModels && configModels.length > 0) {
+        return configModels.map((value) => ({ value }))
+    }
+    return catalog
+}
+
 function getAgyModelOptions(currentModel?: string | null, customOptions?: ModelOption[]): ModelOption[] {
     // The built-in list stands in until the machine answers. Neither list carries
     // a null entry: agy has no mid-session "back to default".

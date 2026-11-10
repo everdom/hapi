@@ -12,7 +12,7 @@ import { useCodexModels } from '@/hooks/queries/useCodexModels'
 import { useCursorModelsForMachine } from '@/hooks/queries/useCursorModelsForMachine'
 import { useAgyModels } from '@/hooks/queries/useAgyModels'
 import { useClaudeModels } from '@/hooks/queries/useClaudeModels'
-import { getClaudeLaunchModelOptions } from '@/components/AssistantChat/modelOptions'
+import { getClaudeLaunchCatalog, getClaudeLaunchModelOptions } from '@/components/AssistantChat/modelOptions'
 import { getClaudeComposerEffortOptions } from '@/components/AssistantChat/claudeEffortOptions'
 import { useDshModelsForMachine } from '@/hooks/queries/useDshModels'
 import { useOpencodeModelsForCwd } from '@/hooks/queries/useOpencodeModelsForCwd'
@@ -96,6 +96,7 @@ import {
     saveClaudeProfiles
 } from '@/lib/claude-profiles'
 import { resolvePermissionModeForFlavor } from '@hapi/protocol/peerSpawnDefaults'
+import type { ClaudeModelSummary } from '@hapi/protocol/apiTypes'
 import { SessionTypeSelector } from './SessionTypeSelector'
 import { PermissionField } from './PermissionField'
 import { usesNativePermissionSelect, usesSharedPermissionModeState, LEGACY_YOLO_BRIDGE_AGENTS } from '@/lib/codexFamilyPermissionAgents'
@@ -888,11 +889,19 @@ export function NewSession(props: {
         machineId,
         enabled: agent === 'claude' && Boolean(machineId)
     })
+    // A cc-switch provider carries the models its config exposes; the
+    // machine's Claude catalog belongs to whichever provider the machine
+    // currently uses, which is a different one.
     const claudeModelOptions = useMemo(() => (
         agent === 'claude'
-            ? getClaudeLaunchModelOptions(claudeModelsState.availableModels, model, t('newSession.claudeModel.notListed'), t('misc.otherModels'))
+            ? getClaudeLaunchModelOptions(
+                getClaudeLaunchCatalog(claudeProfile?.models, claudeModelsState.availableModels),
+                model,
+                t('newSession.claudeModel.notListed'),
+                t('misc.otherModels')
+            )
             : undefined
-    ), [agent, claudeModelsState.availableModels, model, t])
+    ), [agent, claudeProfile?.models, claudeModelsState.availableModels, model, t])
     const claudeEffortOptions = useMemo(() => {
         const levels = getClaudeEffortLevelsForModel(model === 'auto' ? null : model, claudeModelsState.availableModels)
         return levels

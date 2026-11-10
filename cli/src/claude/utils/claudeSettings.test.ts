@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, writeFileSync, unlinkSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { readClaudeSettings, resolveClaudeLaunchModel, shouldIncludeCoAuthoredBy } from './claudeSettings';
+import { readClaudeSettings, readClaudeSettingsFileModels, resolveClaudeLaunchModel, shouldIncludeCoAuthoredBy } from './claudeSettings';
 
 describe('Claude Settings', () => {
   let testClaudeDir: string;
@@ -128,6 +128,33 @@ describe('Claude Settings', () => {
 
     it('returns null when nothing is configured', () => {
       expect(resolveClaudeLaunchModel({ cwd: join(testClaudeDir, 'missing'), env: { ANTHROPIC_MODEL: '' } })).toBe(null);
+    });
+  });
+
+  describe('readClaudeSettingsFileModels', () => {
+    it('reads the model a launch config pins', () => {
+      const settingsPath = join(testClaudeDir, 'launch-config.json');
+      writeFileSync(settingsPath, JSON.stringify({
+        env: {
+          ANTHROPIC_MODEL: 'MiniMax-M3.1-Flash[1M]',
+          ANTHROPIC_DEFAULT_SONNET_MODEL: 'MiniMax-M3.1-Flash[1M]',
+          ANTHROPIC_AUTH_TOKEN: 'secret-token'
+        }
+      }));
+
+      expect(readClaudeSettingsFileModels(settingsPath)).toEqual({
+        model: 'MiniMax-M3.1-Flash[1M]',
+        models: ['MiniMax-M3.1-Flash[1M]']
+      });
+    });
+
+    it('reports nothing for a missing or unparsable file', () => {
+      expect(readClaudeSettingsFileModels(join(testClaudeDir, 'missing.json')))
+        .toEqual({ model: null, models: [] });
+
+      const brokenPath = join(testClaudeDir, 'broken.json');
+      writeFileSync(brokenPath, '{not json');
+      expect(readClaudeSettingsFileModels(brokenPath)).toEqual({ model: null, models: [] });
     });
   });
 });
