@@ -7,6 +7,24 @@ export const isWindows = (): boolean => process.platform === 'win32';
 /** Bound hung WMI/tasklist/ps so a wedged spawn cannot darken the runner (#1911 Overseer B3). */
 const SPAWN_SYNC_TIMEOUT_MS = 10_000;
 
+/**
+ * How many times a Windows CIM read is retried before the scan fails closed.
+ * WMI occasionally answers a full `Win32_Process` enumeration with an error
+ * under load; a single hiccup must not read as "the process tree is still
+ * there" (the caller then refuses to archive a session whose process already
+ * exited).
+ */
+const WINDOWS_CIM_SCAN_ATTEMPTS = 3;
+
+/** Pause between CIM retries so a busy WMI service gets a moment to recover. */
+const WINDOWS_CIM_SCAN_RETRY_DELAY_MS = 250;
+
+/** Synchronous sleep — the process helpers around it are synchronous by design. */
+function sleepSyncMs(ms: number): void {
+  if (ms <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 export function isProcessAlive(pid: number): boolean {
   if (!Number.isFinite(pid) || pid <= 0) {
     return false;
@@ -326,20 +344,39 @@ export function collectWindowsProcessTree(pid: number): number[] | 'scan_failed'
   const n = typeof pid === 'number' ? pid : Number(pid)
   if (!Number.isFinite(n) || n <= 0) return 'scan_failed'
 
-  const result = spawn.sync(
-    'powershell',
-    [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      windowsProcessTreeCimCommand(n),
-    ],
-    { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024, timeout: SPAWN_SYNC_TIMEOUT_MS }
-  )
-  if (result.error || result.status !== 0) {
-    return 'scan_failed'
+  // A transient CIM/WMI failure must not be read as "the tree is still
+  // there": the caller fails closed on scan_failed and then refuses to
+  // archive the session. Retry the read before giving up — the scan is a
+  // pure observation, so a retry can only add information.
+  for (let attempt = 0; attempt < WINDOWS_CIM_SCAN_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      sleepSyncMs(WINDOWS_CIM_SCAN_RETRY_DELAY_MS)
+    }
+    const result = spawn.sync(
+      'powershell',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        windowsProcessTreeCimCommand(n),
+      ],
+      { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024, timeout: SPAWN_SYNC_TIMEOUT_MS }
+    )
+    if (result.error || result.status !== 0) {
+      continue
+    }
+    const parsed = parseWindowsProcessTreeStdout((result.stdout ?? '').toString(), n)
+    if (parsed !== 'scan_failed') {
+      return parsed
+    }
+    // A well-formed answer that does not contain the root means the root is
+    // gone — the tree is empty, which is stop proof, not a scan failure.
+    const stdout = (result.stdout ?? '').toString().trim()
+    if (stdout.startsWith('OK:')) {
+      return []
+    }
   }
-  return parseWindowsProcessTreeStdout((result.stdout ?? '').toString(), n)
+  return 'scan_failed'
 }
 
 async function signalAndWaitWindowsRoot(pid: number, force: boolean): Promise<void> {

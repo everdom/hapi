@@ -1077,3 +1077,39 @@ describe('getHapiRunnerProcessIdentity on POSIX', () => {
         expect(getHapiRunnerProcessIdentity(8328)).toBe('unknown')
     })
 })
+
+describe('collectWindowsProcessTree retries a transient CIM failure', () => {
+    beforeEach(() => {
+        spawnSyncMock.mockReset()
+    })
+
+    afterEach(() => {
+        spawnSyncMock.mockReset()
+    })
+
+    it('retries after a failed read and returns the tree', async () => {
+        const { collectWindowsProcessTree } = await import('./process')
+        spawnSyncMock
+            .mockReturnValueOnce(unavailable('powershell'))
+            .mockReturnValueOnce(completed('OK:4000,1234'))
+
+        expect(collectWindowsProcessTree(1234)).toEqual([4000, 1234])
+        expect(spawnSyncMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('gives up after the attempts are exhausted', async () => {
+        const { collectWindowsProcessTree } = await import('./process')
+        spawnSyncMock.mockReturnValue(unavailable('powershell'))
+
+        expect(collectWindowsProcessTree(1234)).toBe('scan_failed')
+        expect(spawnSyncMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('treats a well-formed answer without the root as an empty tree, not a scan failure', async () => {
+        const { collectWindowsProcessTree } = await import('./process')
+        spawnSyncMock.mockReturnValue(completed('OK:4000,3000'))
+
+        expect(collectWindowsProcessTree(1234)).toEqual([])
+        expect(spawnSyncMock).toHaveBeenCalledTimes(1)
+    })
+})

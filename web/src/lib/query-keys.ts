@@ -40,6 +40,7 @@ export const queryKeys = {
     sessionDshModels: (sessionId: string) => ['session-dsh-models', sessionId] as const,
     machinePiModels: (machineId: string) => ['machine-pi-models', machineId] as const,
     machineClaudeModels: (machineId: string) => ['machine-claude-models', machineId] as const,
+    ccSwitchProviders: ['cc-switch-providers'] as const,
     skills: (sessionId: string) => ['skills', sessionId] as const,
     scratchlist: (sessionId: string) => ['scratchlist', sessionId] as const,
 }

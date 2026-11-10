@@ -102,6 +102,7 @@ import { useCursorModels } from '@/hooks/queries/useCursorModels'
 import { useCursorModelsForMachine } from '@/hooks/queries/useCursorModelsForMachine'
 import { useAgyModels } from '@/hooks/queries/useAgyModels'
 import { useClaudeModels } from '@/hooks/queries/useClaudeModels'
+import { useCcSwitchProviders } from '@/hooks/queries/useCcSwitchProviders'
 import {
     mergeCursorCliModelSkus,
     resolveCursorBaseFromWire
@@ -1235,7 +1236,23 @@ function SessionChatInner(props: SessionChatProps) {
     // exposes replace the machine's catalog, which belongs to whichever
     // provider the machine currently uses — a different one than the profile
     // or provider this session runs with.
-    const claudeConfigModels = props.session.metadata?.claudeConfig?.models
+    const claudeConfig = props.session.metadata?.claudeConfig
+    const ccSwitchProvidersState = useCcSwitchProviders({
+        api: props.api,
+        enabled: agentFlavor === 'claude' && Boolean(claudeConfig?.ccSwitchProviderId)
+    })
+    const ccSwitchProvider = useMemo(() => {
+        const providerId = claudeConfig?.ccSwitchProviderId
+        if (!providerId) return null
+        return ccSwitchProvidersState.providers.find((provider) => provider.id === providerId) ?? null
+    }, [claudeConfig?.ccSwitchProviderId, ccSwitchProvidersState.providers])
+    // Sessions started before the launch config carried its models fall back
+    // to the provider's config, so their picker shows the same models a fresh
+    // session would instead of the machine's catalog.
+    const claudeConfigModels = claudeConfig?.models?.length
+        ? claudeConfig.models
+        : (ccSwitchProvider?.models ?? [])
+    const claudeSessionModel = props.session.model || ccSwitchProvider?.model || null
     const claudeModelOptions = useMemo(() => {
         if (agentFlavor !== 'claude') return undefined
         return getClaudeSessionModelOptions({
@@ -2210,7 +2227,7 @@ function SessionChatInner(props: SessionChatProps) {
                         permissionMode={props.session.permissionMode}
                         collaborationMode={codexCollaborationModeSupported ? props.session.collaborationMode : undefined}
                         copilotAgentMode={agentFlavor === 'copilot' ? props.session.copilotAgentMode : undefined}
-                        model={agentFlavor === 'agy' ? agyCurrentModel : props.session.model}
+                        model={agentFlavor === 'agy' ? agyCurrentModel : claudeSessionModel}
                         modelReasoningEffort={agentFlavor === 'codex' || agentFlavor === 'opencode' ? props.session.modelReasoningEffort : undefined}
                         effort={agentFlavor === 'agy' ? agyCurrentEffort : props.session.effort}
                         agentFlavor={agentFlavor}
